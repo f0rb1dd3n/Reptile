@@ -18,10 +18,10 @@ Rootkit ring 0
     - Heaven's door - A ICMP/UDP port-knocking backdoor
     - Boot persistence
 
-# lkm folder
+# LKM folder
 
 A folder with some modules for study purposes
 
-# module
+# MODULE folder
 
 A release of REPTILE rootkit module, enjoy!
