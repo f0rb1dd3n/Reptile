@@ -16,5 +16,5 @@ Rootkit ring 0
     - Hide processes
     - Hide himself
     - Heaven's door - A ICMP/UDP port-knocking backdoor
+    - Client to knock on heaven's door :D
     - Boot persistence
-
