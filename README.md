@@ -26,12 +26,12 @@ cd Reptile
 ### Getting root privileges
 
 ```
-hax@Debian:~/Reptile/bin$ id
+hax@Debian:~$ id
 uid=1000(hax) gid=1000(hax) grupos=1000(hax),24(cdrom),25(floppy),29(audio),30(dip),44(video),46(plugdev),108(netdev),114(bluetooth),118(scanner)
-hax@Debian:~/Reptile/bin$ ./r00t
+hax@Debian:~$ /reptile/r00t
 You got super powers!
 
-root@Debian:/home/hax/Reptile/bin# id
+root@Debian:/home/hax# id
 uid=0(root) gid=0(root) groups=0(root)
 ```
 
