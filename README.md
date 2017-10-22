@@ -24,7 +24,7 @@ cd Reptile
 
 ## Usage
 
-Binaries will be copied to `/reptile` folder, that will be hidden by rootkit.
+Binaries will be copied to `/reptile` folder, that will be hidden by Reptile.
 
 ### Getting root privileges
 
