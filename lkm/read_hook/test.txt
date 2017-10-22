@@ -1,5 +1,0 @@
-First test
-
-#<reptile>
-Second test
-#</reptile>
