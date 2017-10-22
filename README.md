@@ -18,7 +18,7 @@ Reptile is a LKM rootkit.
 ```
 apt-get install linux-headers-$(uname -r)
 https://github.com/f0rb1dd3n/Reptile.git
-cd Reptile/module
+cd Reptile
 ./installer.sh install
 ```
 
