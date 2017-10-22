@@ -88,4 +88,4 @@ Some functions of this module is based on another rootkits. Please see the refer
 
 ## Contributing
 
-I am open to receiving contributions. If you can contribute with this project, open an issue to discuss the contribution, fork the project and make a pull request. I will evaluate pull requests and merge to the project.
+I am open to receiving contributions. If you can contribute with this project, discuss the contribution via e-mail or open an issue, fork the project and make a pull request. I will evaluate pull requests and merge to the project.
