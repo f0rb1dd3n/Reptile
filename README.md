@@ -9,9 +9,9 @@ Reptile is a LKM rootkit.
 - Hide files contents
 - Hide processes
 - Hide himself
+- Boot persistence
 - Heaven's door - A ICMP/UDP port-knocking backdoor
 - Client to knock on heaven's door :D
-- Boot persistence
     
 ## Install
 
