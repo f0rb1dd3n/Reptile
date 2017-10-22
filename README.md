@@ -63,7 +63,7 @@ Usage: ./knock_on_heaven <args>
 -t      Target IP address
 -p      Source Port
 -q      Target Port
--d      Data to knock on backdoor
+-d      Data to knock on backdoor <key> <reverse IP> <reverse Port>
 -l      Launch listener
 
 [!] ICMP doesn't need ports
