@@ -1,6 +1,6 @@
 # Reptile
 
-Reptile is a LKM rootkit for evil purposes. If you are searching stuff just for study purposes see the [demonstration codes](https://github.com/f0rb1dd3n/papers/tree/master/rootkit_demonstration)
+Reptile is a LKM rootkit for evil purposes. If you are searching stuff just for study purposes see the [demonstration codes](https://github.com/f0rb1dd3n/papers/tree/master/rootkit_demonstration).
 
 ## Features
 
@@ -39,8 +39,7 @@ uid=0(root) gid=0(root) groups=0(root)
 
 - Hide reptile module: `kill -50 0`
 - Hide/unhide process: `kill -49 <PID>`
-- Hide files contents:
-  - All content between the hide tags will be hidden
+- Hide files contents: all content between the tags will be hidden
 
 Example:
 ```
