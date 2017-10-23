@@ -1,6 +1,6 @@
 # Reptile
 
-Reptile is a LKM rootkit for evil purposes. If you are searching stuff only for study purposes see the [demonstration codes](https://github.com/f0rb1dd3n/papers/tree/master/rootkit_demonstration).
+Reptile is a LKM rootkit for evil purposes. If you are searching stuff only for study purposes, see the [demonstration codes](https://github.com/f0rb1dd3n/papers/tree/master/rootkit_demonstration).
 
 ## Features
 
