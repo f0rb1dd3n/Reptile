@@ -67,7 +67,7 @@ function reptile_install {
     	fi
 
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
-        	echo -e "" >> /etc/modules
+        	echo -e "#<reptile>\n$MODULE\n</reptile>" >> /etc/modules
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
         	echo -e "#<reptile>\n$MODULE\n</reptile>" >> /etc/rc.modules
         	chmod +x /etc/rc.modules
