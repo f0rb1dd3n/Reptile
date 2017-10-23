@@ -40,7 +40,7 @@ uid=0(root) gid=0(root) groups=0(root)
 
 ### Hiding
 
-- Hide reptile module: `kill -50 0`
+- Hide/unhide reptile module: `kill -50 0`
 - Hide/unhide process: `kill -49 <PID>`
 - Hide files contents: all content between the tags will be hidden
 
