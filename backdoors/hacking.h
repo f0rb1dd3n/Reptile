@@ -163,6 +163,5 @@ void reverse_shell(char *host, int port){
 }
 
 void s_xor(char *arg, int key, int nbytes) {
-	int i;
-	for(i = 0; i < nbytes; i++) arg[i] ^= key;
+	for(int i = 0; i < nbytes; i++) arg[i] ^= key;
 }
