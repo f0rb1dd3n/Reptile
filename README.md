@@ -33,15 +33,7 @@ Binaries will be copied to `/reptile` folder, that will be hidden by Reptile.
 
 ### Getting root privileges
 
-```
-hax@Debian:~$ id
-uid=1000(hax) gid=1000(hax) grupos=1000(hax),24(cdrom),25(floppy),29(audio),30(dip),44(video),46(plugdev),108(netdev),114(bluetooth),118(scanner)
-hax@Debian:~$ /reptile/r00t
-You got super powers!
-
-root@Debian:/home/hax# id
-uid=0(root) gid=0(root) groups=0(root)
-```
+<img src="https://i.imgur.com/UNTqrHP.png">
 
 ### Hiding
 
