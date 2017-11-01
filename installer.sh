@@ -41,6 +41,7 @@ function reptile_cpy {
 	cp bin/knock_on_heaven /reptile
 	cp scripts/kill_door.sh /reptile
 	cp scripts/start.sh /reptile
+	cp scripts/cleanup.sh /reptile
 	rm -rf bin
 	echo -e "\e[01;36mAll binaries was copied to /reptile\e[00m"
 }
