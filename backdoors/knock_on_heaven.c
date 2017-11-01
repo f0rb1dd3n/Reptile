@@ -321,7 +321,7 @@ void usage(char *argv){
 	printf("\n\e[01;36mKnock Knock on Heaven's Door\e[00m\n");
 	printf("\e[01;32mWriten by: F0rb1dd3n\e[00m\n");
 	printf("\nUsage: %s <args>\n\n", argv);
-	printf("-x\tprotocol (ICMP/UDP)\n");
+	printf("-x\tprotocol (ICMP/UDP/TCP)\n");
 	printf("-s\tSource IP address (You can spoof)\n");
 	printf("-t\tTarget IP address\n");
 	printf("-p\tSource Port\n");
