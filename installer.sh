@@ -56,7 +56,7 @@ function reptile_install {
         	mkdir -p $DRIVER_DIRECTORY
     	fi
 
-    	cp "$PWD/bin/$MODULE.ko" "$DRIVER_DIRECTORY"
+    	cp "/reptile/$MODULE.ko" "$DRIVER_DIRECTORY"
     
     	for f in $(find /etc -type f -maxdepth 1 \( ! -wholename /etc/os-release ! -wholename /etc/lsb-release -wholename /etc/\*release -o -wholename /etc/\*version \) 2> /dev/null)
        	do 
