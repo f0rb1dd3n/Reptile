@@ -27,7 +27,7 @@
 #include <signal.h>
 
 #define KEY		"F0rb1dd3n"
-#define MOTD 		"\n\t\e[00;31mWellcome to F0rb1dd3n's sensual reverse shell!\n\n"
+#define MOTD 		"\n\t\e[00;31mWelcome to F0rb1dd3n's sensual reverse shell!\n\n"
 #define PACKET_SIZE 	1024
 #define UDPPORT		53
 #define TCPPORT		80
