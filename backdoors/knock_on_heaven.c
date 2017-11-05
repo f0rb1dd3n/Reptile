@@ -22,7 +22,7 @@
 #include <netinet/ip_icmp.h>
 #include <netinet/tcp.h>
 
-#define INIT	"uname -a; id; echo; export TERM=linux;\n"
+#define INIT	"unset HISTFILE; unset SAVEHIST; uname -a; id; echo; export TERM=linux;\n"
 
 char good[] = "\e[01;34m[\e[00m+\e[01;34m]\e[00m";
 char bad[] = "\e[01;31m[\e[00m-\e[01;31m]\e[00m";
