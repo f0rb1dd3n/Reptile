@@ -39,7 +39,7 @@ Binaries will be copied to `/reptile` folder, that will be hidden by Reptile.
 
 - Hide/unhide reptile module: `kill -50 0`
 - Hide/unhide process: `kill -49 <PID>`
-- Hide files contents: all content between the tags will be hidden
+- Hide files contents: `kill -51 0` and all content between the tags will be hidden
 
 Example:
 ```
