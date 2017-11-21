@@ -104,7 +104,7 @@ void handle_shutdown(int signal){
 }
 
 void listener(int port) {
-	int new_sockfd, rec;  
+	int new_sockfd, rec, yes = 1;  
 	struct sockaddr_in host_addr, client_addr;
 	socklen_t sin_size;
 	char buff[256];
