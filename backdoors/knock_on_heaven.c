@@ -500,5 +500,6 @@ int main(int argc, char **argv) {
                 	tcp(srcip, dstip, srcport, dstport, data);
 			printf("\n");
 		}
-        } 
+        }
+	return EXIT_SUCCESS;
 }
