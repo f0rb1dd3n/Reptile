@@ -24,7 +24,7 @@ cd Reptile
 ```
 kill -50 0
 rmmod reptile_mod
-./install.sh uninstall
+./install.sh remove
 ```
 
 ## Usage
