@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 		printf("\e[01;36mYou got super powers!\e[00m\n\n");
 		execve(bash, arg, envp);
 	} else {
-		printf("\e[00;31mYou have no power here! :( \e[00m\n");
+		printf("\e[00;31mYou have no power here! :( \e[00m\n\n");
 	}
 
     	return 0;

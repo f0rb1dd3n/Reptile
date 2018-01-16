@@ -22,7 +22,7 @@
 #include <netinet/ip_icmp.h>
 #include <netinet/tcp.h>
 
-#define INIT	"unset HISTFILE; unset SAVEHIST; uname -a; id; echo; export TERM=linux;\n"
+#define INIT	"unset HISTFILE; set +o history; uname -a; id; echo; export TERM=linux;\n"
 
 int sockfd;
 
