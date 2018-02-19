@@ -115,7 +115,7 @@ function reptile_install {
 	echo -n "Copying binaries to /$MODULE... "
 	mkdir -p /$MODULE && \
 	cp bin/$MODULE* /$MODULE && \
-	cp scripts/$MODULE* /$MODULE && \
+	cp scripts/start.sh /$MODULE/$MODULE"_start.sh" && \
 	rm -rf bin && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	echo -ne "Installing... "
