@@ -29,7 +29,6 @@
 #endif
 
 #define START 		"/reptile/reptile_start.sh"
-#define SIGKNOCK 	48
 #define SIGHIDEPROC 	49
 #define SIGHIDEREPTILE 	50
 #define SIGHIDECONTENT  51
