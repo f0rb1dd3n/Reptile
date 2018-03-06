@@ -2,7 +2,7 @@
 
 <img align="left" src="https://imgur.com/nqujOlz.png">
 
-<br><br><br>Reptile is a LKM rootkit writen for evil purposes that runs on kernel 2.6.x/3.x/4.x. Probably is the best that you will find public on the Internet.<br>
+<br><br><br>Reptile is a LKM rootkit written for evil purposes that runs on kernel 2.6.x/3.x/4.x. Probably is the best that you will find public on the Internet.<br>
 
 If you are searching stuff only for study purposes, see the [demonstration codes](https://github.com/f0rb1dd3n/papers/tree/master/rootkit_demonstration).<br><br><br>
 
