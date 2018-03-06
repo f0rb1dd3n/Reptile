@@ -144,6 +144,12 @@ function reptile_install {
 
 function reptile_remove {
 	banner
+	
+	if [ ! -d "/$MODULE" ]; then
+	       echo -e "\nReptile seems to be uninstalled!\n"	
+	       exit
+	fi
+
 	echo -e "\n\e[01;31mYou are gay!\e[00m"
 	echo -ne "Uninstalling... "
 
