@@ -52,10 +52,10 @@ content to hide
 
 Heaven's door is a ICMP/UDP/TCP port-knocking backdoor used by Reptile. To access the backdoor you can use the client: 
 ```
-Knock Knock on Heaven's Door
+Knock Knock on Heaven's (Back)Door
 Written by: F0rb1dd3n
 
-Usage: ./knock_on_heaven <args>
+Usage: ./knock <args>
 
 -x      Protocol (ICMP/UDP/TCP)
 -s      Source IP address (You can spoof)
