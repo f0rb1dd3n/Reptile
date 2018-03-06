@@ -41,7 +41,7 @@ Binaries will be copied to `/reptile` folder, that will be hidden by Reptile.
 ### Getting root privileges
 
 <p align="center">
-   <img src="https://i.imgur.com/sfbpHQu.png">
+   <img src="https://imgur.com/bb3Bs5l.png">
 </p>
 
 ### Hiding
@@ -82,7 +82,7 @@ TCP:  ./knock_on_heaven -x tcp  -s 192.168.0.2 -t 192.168.0.3 -p 666 -q 80 -d "F
 
 ```
 <p align="center">
-   <img src="https://i.imgur.com/zvFWuXT.png">
+   <img src="https://imgur.com/suuOUj2.png">
 </p>
 
 ## Disclaimer
