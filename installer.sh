@@ -104,7 +104,6 @@ function reptile_build {
 	make clean
 
 	mv bin/rep_mod bin/$MODULE.ko
-	strip bin/$MODULE.ko
 }
 
 function reptile_install {
