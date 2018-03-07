@@ -25,7 +25,7 @@ If you are searching stuff only for study purposes, see the [demonstration codes
 ## Install
 ```
 apt-get install linux-headers-$(uname -r)
-https://github.com/f0rb1dd3n/Reptile.git
+git clone https://github.com/f0rb1dd3n/Reptile.git
 cd Reptile
 ./installer.sh install
 ```
