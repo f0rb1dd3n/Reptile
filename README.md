@@ -13,7 +13,7 @@ If you are searching stuff only for study purposes, see the [demonstration codes
 - Hide files contents
 - Hide processes
 - Hide himself
-- Boot persistence
+- Hidden boot persistence
 - Heaven's door - A ICMP/UDP/TCP port-knocking backdoor
 - Client to knock on heaven's door :D
    
