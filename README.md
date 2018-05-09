@@ -39,7 +39,7 @@ Binaries will be copied to `/reptile` folder, that will be hidden by Reptile.
 
 ### Getting root privileges
 
-Just call: `/reptile/reptile_r00t`
+Just run: `/reptile/reptile_r00t`
 
 ### Hiding
 
