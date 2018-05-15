@@ -10,4 +10,4 @@ all:
 	cp $(MODULE)* ../bin
 
 clean:
-	rm -f $(MODULE)*
+	rm -f $(MODULE)* config.h

