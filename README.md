@@ -30,12 +30,12 @@ cd Reptile
 ```
 ## Uninstall
 ```
-./install.sh remove
+./installer.sh remove
 ```
 
 ## Usage
 
-Binaries will be copied to `/reptile` folder, that will be hidden by Reptile.
+Binaries will be copied to `/reptile` folder (or any name you chose), that will be hidden by Reptile.
 
 ### Getting root privileges
 
