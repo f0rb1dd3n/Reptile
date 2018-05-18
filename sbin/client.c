@@ -585,7 +585,7 @@ int main(int argc, char **argv) {
 
         lhost = lport = src_file = dst_dir = srcip = dstip = prot = buf = cmd = data = NULL;
  
-        while((opt = getopt(argc, argv, "a:s:t:l:p:x:w:")) != EOF) {
+        while((opt = getopt(argc, argv, "a:s:t:l:p:x:w:k:")) != EOF) {
                 switch(opt) {
                         case 'x':
                                 prot = optarg;
