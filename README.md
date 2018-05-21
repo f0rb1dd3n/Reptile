@@ -80,10 +80,6 @@ Some functions of this module is based on another rootkits. Please see the refer
 - https://github.com/creaktive/tsh
 - http://www.drkns.net/kernel-who-does-magic/
 
-## Contributing
-
-Please consider making a donation to help improve Reptile. BTC Wallet: `1ASRMARFrpSanLHXCdNHD7K7pvr1fbK2fb`
-
 <p align="center">
    <img src="https://imgur.com/RdYgb1T.gif">
 </p>
