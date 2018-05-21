@@ -78,6 +78,7 @@ Some functions of this module is based on another rootkits. Please see the refer
 - “[Abuse of the Linux Kernel for Fun and Profit](http://phrack.org/issues/50/5.html)”, Halflife, Phrack 50, 1997;
 - https://ruinedsec.wordpress.com/2013/04/04/modifying-system-calls-dispatching-linux/
 - https://github.com/creaktive/tsh
+- http://www.drkns.net/kernel-who-does-magic/
 
 ## Contributing
 
