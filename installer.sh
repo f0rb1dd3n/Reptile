@@ -77,8 +77,6 @@ function reptile_init {
                 	echo -n "Trying to disable SELinux... "
                 	sed -i "s:SELINUX=enforcing:SELINUX=disabled:" /etc/selinux/config || {
                         	echo -e "\e[01;31mERROR!\e[00m\n"
-                        	echo -e "\e[01;33mIf your system reboot the selinux will enable and PAM will fail.\e[00m\n"
-                        	echo -e "\e[01;33mI recommend you abort this installation or restore pam_unix.so.\e[00m\n"
                         	#exit
                 	}
                 	echo -e "\e[01;36mDONE!\e[00m"
