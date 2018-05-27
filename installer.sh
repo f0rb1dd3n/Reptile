@@ -178,7 +178,7 @@ function reptile_install {
 
 	config_gen && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
-
+	
 	echo -ne "Compiling... "
 	make all > /dev/null 2>&1 && \
 	make clean > /dev/null 2>&1 && \
