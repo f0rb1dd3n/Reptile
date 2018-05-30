@@ -5,6 +5,8 @@
 <br><br><br><br><br>Reptile is a LKM rootkit written for evil purposes that runs on Linux kernel 2.6.x/3.x/4.x. 
 <br><br><br><br><br>
 
+#### Warning: last version is unstable, please use a [older version](https://github.com/f0rb1dd3n/Reptile/tree/b5e6d078a398804a68e725b6a0e69b46bc86572c) to avoid some crashes!
+
 ## Features
 
 - Give root to unprivileged users
