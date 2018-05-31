@@ -22,6 +22,7 @@
 ## Roadmap
 
 - Socket/Packet hiding
+- Ioctl comunication
  
 ## Install
 ```
@@ -47,7 +48,7 @@ Just run: `/reptile/reptile_r00t`
 
 - Hide/unhide reptile module: `kill -50 0`
 - Hide/unhide process: `kill -49 <PID>`
-- Hide files contents: `kill -51 0` and all content between the tags will be hidden
+- Hide/unhide files contents: `kill -51 0` and all content between the tags will be hidden
 
 Example:
 ```
@@ -82,6 +83,7 @@ Some functions of this module is based on another rootkits. Please see the refer
 - https://github.com/creaktive/tsh
 - http://www.drkns.net/kernel-who-does-magic/
 
+<br>
 <p align="center">
    <img src="https://imgur.com/RdYgb1T.gif">
 </p>
