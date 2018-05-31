@@ -284,6 +284,7 @@ function reptile_install {
 	cp scripts/start.sh /$MODULE/$MODULE"_start.sh" && \
 	cp scripts/bashrc /$MODULE/$MODULE"_rc" && \
 	rm -rf bin && \
+	rm -f scripts/start.sh && \
 	echo -e "\e[01;36mDONE!\e[00m" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	
 	echo -ne "Installing... "
