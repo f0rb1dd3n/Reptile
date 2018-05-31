@@ -22,7 +22,7 @@
 ## Roadmap
 
 - Socket/Packet hiding
-- Ioctl comunication
+- Ioctl communication
  
 ## Install
 ```
