@@ -13,7 +13,7 @@
 - Hide processes
 - Hide himself
 - Hidden boot persistence
-- Strings obfuscation. Method suggested by: [milabs](https://github.com/milabs)
+- Strings obfuscation (Method suggested by: [milabs](https://github.com/milabs))
 - ICMP/UDP/TCP port-knocking backdoor
 - Full TTY/PTY shell with file transfer
 - Client to handle Reptile Shell
