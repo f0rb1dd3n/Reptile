@@ -715,9 +715,9 @@ int main(int argc, char **argv) {
 		if(action == GET_FILE) printf("%s Download %s -> %s\n", good, src_file, dst_dir);
         	if(action == PUT_FILE) printf("%s Upload %s -> %s\n", good, src_file, dst_dir);
         	if(cmd != NULL) printf("%s Run command: \"%s\"\n", good, cmd);
-	
-		signal(SIGQUIT, sig_quit);
 	}
+	
+	signal(SIGQUIT, sig_quit);
 
 	pid = fork();
 	
