@@ -29,11 +29,11 @@
 apt-get install linux-headers-$(uname -r)
 git clone https://github.com/f0rb1dd3n/Reptile.git
 cd Reptile
-./installer.sh install
+./setup.sh install
 ```
 ## Uninstall
 ```
-./installer.sh remove
+./setup.sh remove
 ```
 
 ## Usage
@@ -59,6 +59,8 @@ content to hide
 
 ### Backdoor
 
+Configure and compile client: `./setup.sh client`
+<br>
 You use the client to send magic packets and get your full TTY encrypted shell!
 
 <p align="center">

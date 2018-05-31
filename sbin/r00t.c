@@ -12,8 +12,10 @@
 #include <unistd.h>
 #include <signal.h>
 
-int sig_handler(int sig) {
-	return sig;
+void sig_handler(int sig) {
+	if(sig) // avoid warnings
+
+	return;
 }
 
 int main(int argc, char *argv[]) {
