@@ -724,10 +724,15 @@ int main(int argc, char **argv) {
 	if(pid == -1) fatal("on forking proccess");
 
 	if(pid > 0) {
-		signal(SIGQUIT, SIG_DFL);
+		if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+			p_error("in socket");
+			kill(0, SIGQUIT);
+		}
 
-		if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) fatal("in socket");
-		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) fatal("setting socket option SO_REUSEADDR");
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+			p_error("setting socket option SO_REUSEADDR");
+			kill(0, SIGQUIT);
+		}
 
 		signal(SIGTERM, handle_shutdown);
 		signal(SIGINT, handle_shutdown);
@@ -737,10 +742,14 @@ int main(int argc, char **argv) {
 		host_addr.sin_addr.s_addr = INADDR_ANY; 
 		memset(&(host_addr.sin_zero), '\0', 8); 
 
-		if (bind(sockfd, (struct sockaddr *)&host_addr, sizeof(struct sockaddr)) == -1)	fatal("binding to socket");
-
+		if (bind(sockfd, (struct sockaddr *)&host_addr, sizeof(struct sockaddr)) == -1)	{
+			p_error("binding to socket");
+			kill(0, SIGQUIT);
+		}
+		
 		if (listen(sockfd, 5) == -1) {
-			fatal("listening on socket");
+			p_error("listening on socket");
+			kill(0, SIGQUIT);
 		} else {
 			printf("%s Listening on port %d...\n", good, atoi(lport));
 		}
@@ -748,8 +757,11 @@ int main(int argc, char **argv) {
 		sin_size = sizeof(struct sockaddr_in);
 		new_sockfd = accept(sockfd, (struct sockaddr *)&client_addr, &sin_size);
 	
-		if(new_sockfd == -1) fatal("accepting connection");
-
+		if(new_sockfd == -1) {
+			p_error("accepting connection");
+			kill(0, SIGQUIT);
+		}
+		
 		fprintf(stdout, "%s Connection from %s:%d\n", good, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 		kill(pid, SIGQUIT);
 		usleep(100*1500);
