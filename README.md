@@ -69,7 +69,7 @@ You use the client to send magic packets and get your full TTY encrypted shell!
 
 More informations: [Reptile Shell](sbin/README.md)
 
-## Disclaimer
+## Warning
 
 Some functions of this module is based on another rootkits. Please see the references!
 
@@ -84,6 +84,10 @@ Some functions of this module is based on another rootkits. Please see the refer
 - https://ruinedsec.wordpress.com/2013/04/04/modifying-system-calls-dispatching-linux/
 - https://github.com/creaktive/tsh
 - http://www.drkns.net/kernel-who-does-magic/
+
+## Disclaimer
+
+I do private jobs, if you are interesting send me an e-mail at: f0rb1dd3n@tuta.io
 
 <br>
 <p align="center">
