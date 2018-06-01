@@ -64,7 +64,7 @@ Configure and compile client: `./setup.sh client`
 You use the client to send magic packets and get your full TTY encrypted shell!
 
 <p align="center">
-   <img src="https://imgur.com/GwwIJAM.png">
+   <img src="https://imgur.com/1v3i1Rn.png">
 </p>
 
 More informations: [Reptile Shell](sbin/README.md)
@@ -91,5 +91,5 @@ I do private jobs, if you are interesting send me an e-mail at: f0rb1dd3n@tuta.i
 
 <br>
 <p align="center">
-   <img src="https://imgur.com/1v3i1Rn.gif">
+   <img src="https://imgur.com/RdYgb1T.gif">
 </p>
