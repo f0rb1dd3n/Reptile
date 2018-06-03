@@ -209,6 +209,7 @@ kill -49 \`ps -ef | grep $MODULE | grep -v grep | awk '{print $2}'\`
 
 #</$TAG>
 EOF
+	chmod +x scripts/start.sh
 	
 	string_obfuscate $TOKEN
 	TOKEN=$RETVAL
