@@ -88,7 +88,7 @@ function reptile_init {
 	}
 
 	if [ -f /etc/selinux/config ]; then
-        	echo -ne "\nSELinux config found on system!\nChecking SELinux status... "
+        	echo -ne "SELinux config found on system!\nChecking SELinux status... "
         	if [[ $(cat /etc/selinux/config | grep "SELINUX=" | tail -n 1) == *"enforcing"* ]]; then
                 	echo -ne "\e[01;31menforcing\e[00m\n"
                 	echo -n "Trying to set enforce permissive... "
@@ -104,14 +104,14 @@ function reptile_init {
                         	#exit
                 	}
                 	echo -e "\e[01;36mDONE!\e[00m"
-                	echo -e "\e[01;33mMaybe you will need to reboot!\e[00m"
+                	echo -e "\e[01;33mMaybe you will need to reboot!\e[00m\n"
         	else
-                	echo -e "\e[01;36mclear\e[00m"
+                	echo -e "\e[01;36mclear\e[00m\n"
         	fi
 	fi      
 
 	[ ! -e /proc ] && {
-        	echo -e "\nWe're in a horrible jail as /proc doesn't exist. Exiting..."
+        	echo -e "We're in a horrible jail as /proc doesn't exist. Exiting...\n"
         	exit
 	}
 

