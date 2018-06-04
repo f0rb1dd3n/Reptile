@@ -355,22 +355,6 @@ unsigned long *find_sys_call_table(void) {
     	return NULL;
 }
 
-unsigned long *ia32_find_sys_call_table(void) {
-        unsigned char *p = 0;
-        void *system_call = 0;
-        int i=0, low, high, ia32_lstar=0xC0000082;
-
-        asm("rdmsr" : "=a" (low), "=d" (high) : "c" (ia32_lstar));
-        system_call = (void*)(((long)high<<32)|low);
-        
-	for(p = system_call, i=0; i<500; i++){
-                if(p[0]==0xff && p[1]==0x14 && p[2]==0xc5)
-                        return (void*)(0xffffffff00000000 | *((unsigned int *)(p + 3)));
-                p++;
-        }
-        return NULL;
-}
-
 #elif defined(i686) || defined(i386) || defined(x86) 
 
 struct {
@@ -579,9 +563,7 @@ static int __init reptile_init(void) {
 	atomic_set(&read_on, 0);
 	sct = (unsigned long *)find_sys_call_table();
 
-#if defined(x86_64) || defined(amd64)
-	if(!sct) sct = (unsigned long *)ia32_find_sys_call_table();
-#endif
+	if(!sct) sct = (unsigned long *)kallsyms_lookup_name("sys_call_table");
 	if(!sct) sct = (unsigned long *)generic_find_sys_call_table();			
 	if(!sct) return -1;
 	
