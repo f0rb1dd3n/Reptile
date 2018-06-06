@@ -56,8 +56,9 @@ function string_obfuscate {
 
 	RETVAL+="\\
 ({ \\
-unsigned int *p = (unsigned int*)__builtin_alloca( $n * 4 ); \\
-$VAR (char *)p; \\
+unsigned int *p = (unsigned int*)__builtin_alloca($(( (n*4)+1 ))); \\
+$VAR p[$n] = 0x00; \\
+ (char *)p; \\
 })
 "
 }
@@ -269,7 +270,7 @@ EOF
 function reptile_install {
 	reptile_init
 	config_gen
-	
+
 	echo -ne "Compiling... "
 	make all > /dev/null 2>&1 && \
 	make clean > /dev/null 2>&1 && \
