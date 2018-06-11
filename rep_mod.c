@@ -86,7 +86,7 @@ atomic_t read_on;
 	 (char *)p; \
 	})
 
-    	asmlinkage size_t (*vfs_read_addr)(struct file *file, char __user *buf, size_t count, loff_t *pos);
+    	asmlinkage ssize_t (*vfs_read_addr)(struct file *file, char __user *buf, size_t count, loff_t *pos);
 #endif
 
 asmlinkage int (*o_kill)(pid_t pid, int sig);

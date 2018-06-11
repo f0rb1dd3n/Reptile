@@ -45,7 +45,7 @@ void p_error(char *message) {
    char error_message[129];
 
    strcpy(error_message, bad);
-   strncat(error_message, " Error ", 7); 
+   strcat(error_message, " Error "); 
    strncat(error_message, message, 93);
    perror(error_message);
    printf("\n\n");
