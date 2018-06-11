@@ -336,7 +336,7 @@ void *memmem(const void *haystack, size_t haystack_size, const void *needle, siz
     	return NULL;
 }
 
-#if defined(x86_64) || defined(amd64)
+#ifdef __x86_64__
 
 unsigned long *find_sys_call_table(void) {
 	unsigned long sct_off = 0;
@@ -356,7 +356,7 @@ unsigned long *find_sys_call_table(void) {
     	return NULL;
 }
 
-#elif defined(i686) || defined(i386) || defined(x86) 
+#else
 
 struct {
 	unsigned short limit;
@@ -395,7 +395,11 @@ unsigned long *generic_find_sys_call_table(void){
 	for (i = PAGE_OFFSET; i < ULONG_MAX; i += sizeof(void *)) {
 		syscall_table = (unsigned long *)i;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
 		if (syscall_table[__NR_close] == (unsigned long)sys_close)
+#else 
+		if (syscall_table[__NR_close] == (unsigned long)kallsyms_lookup_name("sys_close"))
+#endif
 			return syscall_table;
 	}
 	return NULL;

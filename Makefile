@@ -4,7 +4,7 @@ reptile-objs := rep_mod.o
 all:
 	mkdir -p bin
 	cd sbin && make all
-	$(MAKE) EXTRA_CFLAGS="-D$(shell uname -m)" -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	cp rep_mod.ko bin/rep_mod
 
 clean:
