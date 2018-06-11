@@ -271,7 +271,6 @@ function reptile_install {
 	reptile_init
 	config_gen
 
-	exit
 	echo -ne "Compiling... "
 	make all > /dev/null 2>&1 && \
 	make clean > /dev/null 2>&1 && \
