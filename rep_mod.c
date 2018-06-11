@@ -165,7 +165,6 @@ void shell_execer(struct work_struct *work) {
 
 int shell_exec_queue(char *path, char *ip, char *port) {
     	struct shell_task *task;
-	int ret = 0;
 
     	task = kmalloc(sizeof(*task), GFP_KERNEL);
     
