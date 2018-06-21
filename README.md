@@ -19,11 +19,6 @@
 - Client to handle Reptile Shell
 - Shell connect back each X times (not default)
    
-## Roadmap
-
-- Socket/Packet hiding
-- Ioctl communication
- 
 ## Install
 ```
 apt-get install linux-headers-$(uname -r)
