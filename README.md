@@ -1,19 +1,20 @@
-# Reptile
+# Reptile 2.0 (beta)
 
 <img align="left" src="https://imgur.com/nqujOlz.png">
 
-<br><br><br><br><br>Reptile is a LKM rootkit written for evil purposes that runs on Linux kernel 2.6.x/3.x/4.x. 
+<br><br><br><br><br>Reptile is a Linux LKM rootkit. Beta version, be careful when using it.
 <br><br><br><br><br>
 
 ## Features
 
 - Give root to unprivileged users
 - Hide files and directories
-- Hide files contents
 - Hide processes
 - Hide himself
+- Hide TCP/IP connections
 - Hidden boot persistence
-- Strings obfuscation (Method suggested by: [milabs](https://github.com/milabs))
+- File content tampering
+- Some obfuscation techniques
 - ICMP/UDP/TCP port-knocking backdoor
 - Full TTY/PTY shell with file transfer
 - Client to handle Reptile Shell
@@ -22,6 +23,7 @@
 ## Install
 ```
 apt-get install linux-headers-$(uname -r)
+perl -MCPAN -e "install String::Unescape"
 git clone https://github.com/f0rb1dd3n/Reptile.git
 cd Reptile
 ./setup.sh install
@@ -30,39 +32,9 @@ cd Reptile
 ```
 ./setup.sh remove
 ```
-
 ## Usage
 
-Binaries will be copied to `/reptile` folder (or any name you chose), that will be hidden by Reptile.
-
-### Getting root privileges
-
-Just run: `/reptile/reptile_r00t`
-
-### Hiding
-
-- Hide/unhide reptile module: `kill -50 0`
-- Hide/unhide process: `kill -49 <PID>`
-- Hide/unhide files contents: `kill -51 0` and all content between the tags will be hidden
-
-Example:
-```
-#<reptile> 
-content to hide 
-#</reptile>
-```
-
-### Backdoor
-
-Configure and compile client: `./setup.sh client`
-<br>
-You use the client to send magic packets and get your full TTY encrypted shell!
-
-<p align="center">
-   <img src="https://imgur.com/1v3i1Rn.png">
-</p>
-
-More informations: [Reptile Shell](sbin/README.md)
+See [Wiki](https://github.com/f0rb1dd3n/Reptile/wiki) to usage details.
 
 ## Warning
 
@@ -70,19 +42,30 @@ Some functions of this module is based on another rootkits. Please see the refer
 
 ## References
 
+Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) for the [KHOOK](https://github.com/milabs/khook) framework and [kmatryoshka](https://github.com/milabs/kmatryoshka) loader.<br>
+
 - “[LKM HACKING](http://www.ouah.org/LKM_HACKING.html)”, The Hackers Choice (THC), 1999;
 - https://github.com/mncoppola/suterusu
 - https://github.com/m0nad/Diamorphine.git
 - https://github.com/David-Reguera-Garcia-Dreg/enyelkm.git
-- https://github.com/maK-/maK_it-Linux-Rootkit
-- “[Abuse of the Linux Kernel for Fun and Profit](http://phrack.org/issues/50/5.html)”, Halflife, Phrack 50, 1997;
-- https://ruinedsec.wordpress.com/2013/04/04/modifying-system-calls-dispatching-linux/
 - https://github.com/creaktive/tsh
 - http://www.drkns.net/kernel-who-does-magic/
+- https://github.com/brenns10/lsh
 
 ## Disclaimer
 
-I do private jobs, if you are interesting send me an e-mail at: f0rb1dd3n@tuta.io
+If you wanna more features like:<br>
+
+- CPU usage hiding (for miners)
+- Generic binary that loads to any version of kernel
+- Best way to file tampering
+- Best way to hide files/process/dir
+- Best obfuscation
+- Bypass some kernel protections
+- A kernel module that survive to kernel update
+- Hiding connections and packets of other protocols
+
+There is a private version of Reptile. Even if you wanna a new feature or a new kernel module on demand, send an e-mail to f0rb1dd3n@tuta.io to get more information.
 
 <br>
 <p align="center">

