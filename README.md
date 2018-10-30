@@ -57,18 +57,7 @@ Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) fo
 
 ## Disclaimer
 
-If you wanna more features like:<br>
-
-- CPU usage hiding (for miners)
-- Generic binary that loads to any version of kernel
-- Best way to file tampering
-- Best way to hide files/process/dir
-- Best obfuscation
-- Bypass some kernel protections
-- A kernel module that survive to kernel update
-- Hiding connections and packets of other protocols
-
-There is a private version of Reptile. Even if you wanna a new feature or a new kernel module on demand, send an e-mail to f0rb1dd3n@tuta.io to get more information.
+If you wanna more information, send me an e-mail: f0rb1dd3n@tuta.io
 
 <br>
 <p align="center">
