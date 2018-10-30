@@ -2,7 +2,7 @@
 
 <img align="left" src="https://imgur.com/nqujOlz.png">
 
-<br><br><br><br><br>Reptile is a Linux LKM rootkit. Beta version, be careful when using it.
+<br><br><br><br><br>Reptile is a Linux LKM rootkit. **Beta version, be careful when using it.**
 <br><br><br><br><br>
 
 ## Features
@@ -34,7 +34,7 @@ cd Reptile
 ```
 ## Usage
 
-See [Wiki](https://github.com/f0rb1dd3n/Reptile/wiki) to usage details.
+See [Wiki](https://github.com/f0rb1dd3n/Reptile/wiki/Usage) to usage details.
 
 ## Warning
 
@@ -42,7 +42,7 @@ Some functions of this module is based on another rootkits. Please see the refer
 
 ## References
 
-Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) for the [KHOOK](https://github.com/milabs/khook) framework and [kmatryoshka](https://github.com/milabs/kmatryoshka) loader.<br>
+Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) for the [KHOOK](https://github.com/milabs/khook) framework and [kmatryoshka](https://github.com/milabs/kmatryoshka) loader.<br><br>
 
 - “[LKM HACKING](http://www.ouah.org/LKM_HACKING.html)”, The Hackers Choice (THC), 1999;
 - https://github.com/mncoppola/suterusu
