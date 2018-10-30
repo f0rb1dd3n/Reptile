@@ -42,15 +42,18 @@ Some functions of this module is based on another rootkits. Please see the refer
 
 ## References
 
-Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) for the [KHOOK](https://github.com/milabs/khook) framework and [kmatryoshka](https://github.com/milabs/kmatryoshka) loader.<br><br>
-
 - “[LKM HACKING](http://www.ouah.org/LKM_HACKING.html)”, The Hackers Choice (THC), 1999;
+- https://github.com/milabs
 - https://github.com/mncoppola/suterusu
 - https://github.com/m0nad/Diamorphine.git
 - https://github.com/David-Reguera-Garcia-Dreg/enyelkm.git
 - https://github.com/creaktive/tsh
 - http://www.drkns.net/kernel-who-does-magic/
 - https://github.com/brenns10/lsh
+
+## Thanks
+
+Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) for the [KHOOK](https://github.com/milabs/khook) framework and [kmatryoshka](https://github.com/milabs/kmatryoshka) loader.
 
 ## Disclaimer
 
