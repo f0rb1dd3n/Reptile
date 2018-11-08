@@ -359,7 +359,7 @@ function reverse_build {
 #define _CONFIG_H
 
 #define HOMEDIR		"/root"
-#define RCFILE 		"/var/tmp/.bashrc" // if you wanna the shell loads a rcfile
+#define RCFILE 		"/var/tmp/.bashrc"
 #define GET_FILE 	1
 #define PUT_FILE 	2
 #define RUNSHELL 	3
