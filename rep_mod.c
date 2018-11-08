@@ -5,8 +5,6 @@
  *
  */
 
-//#include <asm/pgtable.h>
-#include <asm/uaccess.h>
 #include <linux/cred.h>
 #include <linux/dirent.h>
 #include <linux/file.h>
