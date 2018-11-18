@@ -6,6 +6,7 @@
 #include <linux/stop_machine.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
+#include <linux/sched.h>
 
 typedef struct {
 	atomic_t usage;

@@ -156,6 +156,7 @@ function config_gen {
     fi
 
 	_SHELL="/"$MODULE"/"$MODULE"_reverse"
+	__SHELL="./"$MODULE"_reverse"
 	CMD="/"$MODULE"/"$MODULE"_cmd"
 	
 	cat > scripts/start <<EOF
@@ -310,6 +311,7 @@ function reptile_remove {
 	else
         echo -e "Invalid option. Not rebooting the system!"
 	fi
+	echo
 }
 
 function client_build {

@@ -133,4 +133,5 @@ int main(int argc, char **argv)
 	}
 
 	close(sockfd);
+	return EXIT_SUCCESS;
 }
