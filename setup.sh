@@ -156,7 +156,6 @@ function config_gen {
     fi
 
 	_SHELL="/"$MODULE"/"$MODULE"_reverse"
-	__SHELL="./"$MODULE"_reverse"
 	CMD="/"$MODULE"/"$MODULE"_cmd"
 	
 	cat > scripts/start <<EOF
