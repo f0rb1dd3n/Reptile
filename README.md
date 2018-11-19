@@ -2,7 +2,7 @@
 
 <img align="left" src="https://imgur.com/nqujOlz.png">
 
-<br><br><br><br><br>Reptile is a Linux LKM rootkit.
+<br><br><br><br><br>
 <br><br><br><br><br>
 
 ## Tested on
