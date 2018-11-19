@@ -1,9 +1,17 @@
-# Reptile 2.0 (beta)
+# Reptile 2.0
 
 <img align="left" src="https://imgur.com/nqujOlz.png">
 
-<br><br><br><br><br>Reptile is a Linux LKM rootkit. **Beta version, be careful when using it.**
+<br><br><br><br><br>Reptile is a Linux LKM rootkit.
 <br><br><br><br><br>
+
+## Tested on
+
+**Debian 9**: 4.9.0-8-amd64
+**Ubuntu 18.04.1 LTS**: 4.15.0-38-generic
+**Kali Linux**: 4.18.0-kali2-amd64
+**Centos 7**: 3.10.0-862.3.2.el7.x86_64
+**Centos 6.10**: 2.6.32-754.6.3.el6.x86_64
 
 ## Features
 
