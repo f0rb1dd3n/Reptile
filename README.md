@@ -69,5 +69,5 @@ If you wanna more information, send me an e-mail: f0rb1dd3n@tuta.io
 
 <br>
 <p align="center">
-   <img src="https://imgur.com/RdYgb1T.gif">
+   <img src="http://2.bp.blogspot.com/-OMozG1JNxic/VQxKMfiU2EI/AAAAAAAAOQM/_suBsIa9O7c/s1600/Reptile%2B6.gif">
 </p>
