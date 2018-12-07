@@ -10,8 +10,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define AUTH 0xdeadbeef
-#define HTUA 0xc0debabe
+#include "config.h"
+
 #define SHELL "/bin/bash"
 
 struct control {

