@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #include "config.h"
 #include "util.h"
@@ -49,10 +50,16 @@ int unset(char **args);
 int show(char **args);
 int run(char **args);
 
-char *builtin_str[] = {"help", "set", "unset", "show", "run", "exit"};
-int (*builtin_func[])(char **) = {&help, &set, &unset, &show, &run, &__exit};
+int exconf();
 
-int num_builtins() { return sizeof(builtin_str) / sizeof(char *); }
+int loadconf();
+
+char *builtin_str[] = {"help", "set", "unset", "show", "run", "exconf", "loadconf", "exit"};
+
+int (*builtin_func[])(char **) = {&help, &set, &unset, &show, &run, &exconf, &loadconf, &__exit};
+
+int num_builtins()
+{ return sizeof(builtin_str) / sizeof(char *); }
 
 int launch(char **args)
 {
@@ -363,6 +370,68 @@ int run(char **args)
 		}
 	}
 	return 1;
+}
+
+int exconf()
+{
+    char filename[20] = {0};
+    printf("Input the name for your config file:\n");
+    scanf("%s", filename);
+    char path[50] = "configs";
+    sprintf(path, "%s/%s", path, filename);
+    FILE *confile;
+    if (!(confile = fopen(path, "w+")))
+    {
+        printf("Cannot open config file.");
+        return 1;
+    }
+    for (int vars = 0; vars < 9; vars++)
+    {
+        if (var_array[vars] != 0)
+        {
+            fprintf(confile, "%s\n", var_array[vars]);
+        } else fprintf(confile, "%s\n", var_array[vars]);
+    }
+    fclose(confile);
+    return 1;
+}
+
+void show_dir_content(char *path)
+{
+    DIR *d = opendir(path);
+    if (d == NULL) return;
+    struct dirent *dir;
+    while ((dir = readdir(d)) != NULL)
+    {
+        if (dir->d_type != DT_DIR)
+            printf("%s\t", dir->d_name);
+    }
+    closedir(d);
+    printf("\n");
+}
+
+int loadconf()
+{
+    char filename[20] = {0};
+    char path[50] = "configs";
+    FILE *confile;
+    printf("Choose one config file:\n");
+    show_dir_content("configs");
+    scanf("%s", filename);
+    strcat(path, "/");
+    strcat(path, filename);
+    confile = fopen(path, "r+");
+    for (int vars = 0; vars < 9; vars++)
+    {
+        char arg[50] = {0};
+        fgets(arg, 50, confile);
+        if (strcmp(arg, "(null)\n"))
+        {
+            arg[strlen(arg) - 1] = '\0';
+            var_array[vars] = strdup(arg);
+        }
+    }
+    return 1;
 }
 
 int execute(char **args)

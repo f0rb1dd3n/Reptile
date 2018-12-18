@@ -349,7 +349,7 @@ EOF
 	echo -e "\e[01;36mDONE!\e[00m"
 
 	echo -ne "Compiling... "
-	mkdir -p bin && \
+	mkdir -p bin/configs && \
 	cd sbin && \
 	make listener > /dev/null 2>&1 && \
 	make packet > /dev/null 2>&1 && \
