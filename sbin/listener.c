@@ -73,55 +73,62 @@ void pel_error(char *s)
 	}
 }
 
+void help_download()
+{
+	fprintf(stdout, "%s <file path> <dest dir>\n", builtin_str[1]);
+	fprintf(stdout, "Example: download /etc/passwd /tmp\n");
+}
+
+void help_upload()
+{
+	fprintf(stdout, "%s <file path> <dest dir>\n", builtin_str[2]);
+	fprintf(stdout, "Example: upload /root/backdoor /etc/cron.daily\n");
+}
+
+void help_delay()
+{
+	fprintf(stdout, "%s <seconds>\n", builtin_str[4]);
+	fprintf(stdout, "Example: delay 3600\n\n");
+	fprintf(stdout, "%s Use \"delay 0\" if you don't wanna a "
+			"connecion every X time\n", warn);
+}
+
+void no_help()
+{
+	fprintf(stdout, "This command doesn't need help\n");
+}
+
 int help(int sock, char **args)
 {
 	if (args[0] == NULL && sock == -1)
 		return 1;
 
 	if (args[1] != NULL) {
-		if (strcmp(args[1], builtin_str[1]) == 0) {
-			fprintf(stdout, "%s <file path> <dest dir>\n",
-				builtin_str[1]);
-			fprintf(stdout, "Example: download /etc/passwd /tmp\n");
+		if (strcmp(args[1], builtin_str[0]) == 0) {
+			no_help();
+		} else if (strcmp(args[1], builtin_str[1]) == 0) {
+			help_download();
 		} else if (strcmp(args[1], builtin_str[2]) == 0) {
-			fprintf(stdout, "%s <file path> <dest dir>\n",
-				builtin_str[2]);
-			fprintf(
-			    stdout,
-			    "Example: upload /root/backdoor /etc/cron.daily\n");
+			help_upload();
+		} else if (strcmp(args[1], builtin_str[3]) == 0) {
+			no_help();
 		} else if (strcmp(args[1], builtin_str[4]) == 0) {
-			fprintf(stdout, "%s <seconds>\n", builtin_str[4]);
-			fprintf(stdout, "Example: delay 3600\n\n");
-			fprintf(stdout,
-				"%s Use \"delay 0\" if you don't wanna a "
-				"connecion every X time\n",
-				warn);
+			help_delay();
+		} else if (strcmp(args[1], builtin_str[5]) == 0) {
+			no_help();
 		} else {
-			if (strcmp(args[1], builtin_str[0]) == 0 ||
-			    strcmp(args[1], builtin_str[3]) == 0 ||
-			    strcmp(args[1], builtin_str[5]) == 0) {
-				fprintf(stdout,
-					"This command doesn't need help\n");
-			} else {
-				fprintf(stdout, "This command is not valid!\n");
-			}
+			fprintf(stdout, "This command is not valid!\n");
 		}
 	} else {
 		fprintf(stdout, "\n\e[01;36mReptile Shell\e[00m\n");
-
 		fprintf(stdout, "\e[01;32mWritten by: F0rb1dd3n\e[00m\n\n");
 		fprintf(stdout, "\t%s\t\tShow this help\n", builtin_str[0]);
-		fprintf(stdout, "\t%s\tDownload a file from host\n",
-			builtin_str[1]);
-		fprintf(stdout, "\t%s\t\tUpload a file to host\n",
-			builtin_str[2]);
-		fprintf(stdout, "\t%s\t\tOpen a full TTY interactive shell\n",
-			builtin_str[3]);
-		fprintf(stdout, "\t%s\t\tSet time to reverse shell connect\n",
-			builtin_str[4]);
+		fprintf(stdout, "\t%s\tDownload a file from host\n", builtin_str[1]);
+		fprintf(stdout, "\t%s\t\tUpload a file to host\n", builtin_str[2]);
+		fprintf(stdout, "\t%s\t\tOpen a full TTY interactive shell\n", builtin_str[3]);
+		fprintf(stdout, "\t%s\t\tSet time to reverse shell connect\n", builtin_str[4]);
 		fprintf(stdout, "\t%s\t\tExit this shell\n\n", builtin_str[5]);
-		fprintf(stdout,
-			"Type: \"help <command>\" to see specific help\n");
+		fprintf(stdout, "Type: \"help <command>\" to see specific help\n");
 	}
 
 	fprintf(stdout, "\n");
@@ -550,7 +557,7 @@ int execute(int sock, char **args)
 {
 	int i, ret;
 
-	if (args[0] == NULL && sock == -1)
+	if (args[0] == NULL || sock == -1)
 		return 1;
 
 	for (i = 0; i < num_builtins(); i++) {
