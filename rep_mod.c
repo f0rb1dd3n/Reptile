@@ -433,8 +433,8 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 		if (htons(tcp_header->source) != SRCPORT)
 			return NF_ACCEPT;
 
-		if (htons(tcp_header->window) == WIN) {
-//sometimes tcp_header->seq had been changed,maybe NAT router chang it.
+		if (//htons(tcp_header->seq) == SEQ &&   /* uncoment this if you wanna use tcp_header->seq as filter */
+		    htons(tcp_header->window) == WIN) {
 			size = htons(ip_header->tot_len) - sizeof(_iph) -
 			       sizeof(_tcph);
 

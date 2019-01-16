@@ -167,7 +167,7 @@ int shell(int sock, char **args)
 
 	if (ret != PEL_SUCCESS) {
 		pel_error("pel_send_msg");
-		return 0;
+		return 1;
 	}
 
 	imf = 0;
@@ -177,7 +177,7 @@ int shell(int sock, char **args)
 
 		if (ioctl(0, TIOCGWINSZ, &ws) < 0) {
 			p_error("ioctl(TIOCGWINSZ)");
-			return 0;
+			return 1;
 		}
 	} else {
 		ws.ws_row = 25;
@@ -193,7 +193,7 @@ int shell(int sock, char **args)
 
 	if (ret != PEL_SUCCESS) {
 		pel_error("pel_send_msg");
-		return 0;
+		return 1;
 	}
 
 	if (strcmp(args[0], builtin_str[3]) == 0) {
@@ -201,7 +201,7 @@ int shell(int sock, char **args)
 
 		if (!temp) {
 			p_error("malloc");
-			return 0;
+			return 1;
 		}
 
 		temp[0] = RUNSHELL;
@@ -215,7 +215,7 @@ int shell(int sock, char **args)
 
 		if (!temp) {
 			p_error("malloc");
-			return 0;
+			return 1;
 		}
 
 		while (args[len] != NULL) {
@@ -227,7 +227,7 @@ int shell(int sock, char **args)
 
 		if (temp == NULL) {
 			p_error("realloc");
-			return 0;
+			return 1;
 		}
 
 		memset(temp, '\0', size);
@@ -244,13 +244,13 @@ int shell(int sock, char **args)
 
 	if (ret != PEL_SUCCESS) {
 		pel_error("pel_send_msg");
-		return 0;
+		return 1;
 	}
 
 	if (isatty(1)) {
 		if (tcgetattr(1, &tp) < 0) {
 			p_error("tcgetattr");
-			return 0;
+			return 1;
 		}
 
 		memcpy((void *)&tr, (void *)&tp, sizeof(tr));
@@ -267,7 +267,7 @@ int shell(int sock, char **args)
 
 		if (tcsetattr(1, TCSADRAIN, &tr) < 0) {
 			p_error("tcsetattr");
-			return 0;
+			return 1;
 		}
 	}
 
@@ -281,7 +281,6 @@ int shell(int sock, char **args)
 
 		if (select(sock + 1, &rd, NULL, NULL, NULL) < 0) {
 			p_error("select");
-			ret = 0;
 			break;
 		}
 
@@ -290,7 +289,6 @@ int shell(int sock, char **args)
 
 			if (ret != PEL_SUCCESS) {
 				pel_error("pel_recv_msg");
-				ret = 0;
 				break;
 			}
 
@@ -304,7 +302,6 @@ int shell(int sock, char **args)
 
 			if (write(1, message, len) != len) {
 				p_error("write");
-				ret = 0;
 				break;
 			}
 		}
@@ -317,7 +314,6 @@ int shell(int sock, char **args)
 
 			if (len == 0) {
 				fprintf(stderr, "stdin: end-of-file\n");
-				ret = 1;
 				break;
 			}
 
@@ -325,7 +321,6 @@ int shell(int sock, char **args)
 
 			if (ret != PEL_SUCCESS) {
 				pel_error("pel_send_msg");
-				ret = 0;
 				break;
 			}
 		}
@@ -334,7 +329,7 @@ int shell(int sock, char **args)
 	if (isatty(1))
 		tcsetattr(1, TCSADRAIN, &tp);
 
-	return ret;
+	return 1;
 }
 
 int get_file(int sock, char **args)
@@ -358,7 +353,7 @@ int get_file(int sock, char **args)
 
 	if (ret != PEL_SUCCESS) {
 		pel_error("pel_send_msg");
-		return 0;
+		return 1;
 	}
 
 	temp = strrchr(args[1], '/');
@@ -374,7 +369,7 @@ int get_file(int sock, char **args)
 
 	if (pathname == NULL) {
 		p_error("malloc");
-		return 0;
+		return 1;
 	}
 
 	strcpy(pathname, args[2]);
@@ -386,7 +381,7 @@ int get_file(int sock, char **args)
 	if (fd < 0) {
 		p_error("creat");
 		free(pathname);
-		return 0;
+		return 1;
 	}
 
 	free(pathname);
@@ -399,7 +394,7 @@ int get_file(int sock, char **args)
 		if (ret != PEL_SUCCESS) {
 			pel_error("pel_recv_msg");
 			fprintf(stderr, "%s Transfer failed.\n", bad);
-			return 0;
+			return 1;
 		}
 
 		if (strncmp((char *)message, EXIT, EXIT_LEN) == 0 && total > 0)
@@ -407,7 +402,7 @@ int get_file(int sock, char **args)
 
 		if (write(fd, message, len) != len) {
 			p_error("write");
-			return 0;
+			return 1;
 		}
 
 		total += len;
@@ -449,7 +444,7 @@ int put_file(int sock, char **args)
 
 	if (pathname == NULL) {
 		p_error("malloc");
-		return 0;
+		return 1;
 	}
 
 	strcpy(pathname, args[2]);
@@ -464,14 +459,14 @@ int put_file(int sock, char **args)
 
 	if (ret != PEL_SUCCESS) {
 		pel_error("pel_send_msg");
-		return 0;
+		return 1;
 	}
 
 	fd = open(args[1], O_RDONLY);
 
 	if (fd < 0) {
 		p_error("open");
-		return 0;
+		return 1;
 	}
 
 	total = 0;
@@ -481,7 +476,7 @@ int put_file(int sock, char **args)
 
 		if (len < 0) {
 			p_error("read");
-			return 0;
+			return 1;
 		}
 
 		if (len == 0) {
@@ -493,7 +488,7 @@ int put_file(int sock, char **args)
 		if (ret != PEL_SUCCESS) {
 			pel_error("pel_send_msg");
 			fprintf(stderr, "%s Transfer failed.\n", bad);
-			return 0;
+			return 1;
 		}
 
 		total += len;
@@ -546,7 +541,7 @@ int delay(int sock, char **args)
 
 	if (ret != PEL_SUCCESS) {
 		pel_error("pel_send_msg");
-		return 0;
+		return 1;
 	}
 
 	fprintf(stdout, "%s delay -> %s\n\n", good, args[1]);
@@ -570,7 +565,7 @@ int execute(int sock, char **args)
 
 				if (ret != PEL_SUCCESS) {
 					pel_error("pel_send_msg");
-					return 0;
+					return 1;
 				}
 
 				return (*builtin_func[i])(sock, args);
@@ -583,7 +578,7 @@ int execute(int sock, char **args)
 
 	if (ret != PEL_SUCCESS) {
 		pel_error("pel_send_msg");
-		return 0;
+		return 1;
 	}
 
 	return (*builtin_func[3])(sock, args);

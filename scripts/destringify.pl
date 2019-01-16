@@ -5,7 +5,9 @@
 # https://github.com/milabs
 #
 
-use String::Unescape;
+use FindBin qw($Bin);
+use lib "$Bin/lib";
+use Unescape;
 
 sub translate($) {
 	my $str = shift;
