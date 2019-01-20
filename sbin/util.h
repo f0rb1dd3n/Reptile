@@ -14,10 +14,10 @@
 extern char *optarg;
 // extern int optind;
 
-char good[] = "\e[01;34m[\e[00m+\e[01;34m]\e[00m";
-char awesome[] = "\e[01;32m[\e[00m+\e[01;32m]\e[00m";
-char bad[] = "\e[01;31m[\e[00m-\e[01;31m]\e[00m";
-char warn[] = "\e[01;33m[\e[00m!\e[01;33m]\e[00m";
+char good[] = "\e[01;34m[*]\e[00m";
+char awesome[] = "\e[01;32m[+]\e[00m";
+char bad[] = "\e[01;31m[-]\e[00m";
+char warn[] = "\e[01;33m[!]\e[00m";
 
 void p_error(char *message)
 {
