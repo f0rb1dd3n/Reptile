@@ -70,10 +70,18 @@ static void __khook_init(khook_t *s)
 
 	while (s->length < 5) {
 		struct insn insn;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+#ifdef RHEL_RELEASE_CODE
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 0)
 		insn_api.init(&insn, s->target + s->length, MAX_INSN_SIZE, x86_64);
-#else
+	#else
 		insn_api.init(&insn, s->target + s->length, x86_64);
+	#endif
+#else 
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+		insn_api.init(&insn, s->target + s->length, MAX_INSN_SIZE, x86_64);
+	#else
+		insn_api.init(&insn, s->target + s->length, x86_64);
+	#endif
 #endif
 		insn_api.get_length(&insn);
 		s->length += insn.length;

@@ -1,4 +1,4 @@
-# Reptile 2.0
+# Reptile
 
 <img align="left" src="https://imgur.com/nqujOlz.png">
 
@@ -19,7 +19,7 @@
 - Hide files and directories
 - Hide processes
 - Hide himself
-- Hide TCP/IP connections
+- Hide TCP/UDP connections
 - Hidden boot persistence
 - File content tampering
 - Some obfuscation techniques
@@ -29,7 +29,6 @@
 - Shell connect back each X times (not default)
    
 ## Install
-~perl -MCPAN -e "install String::Unescape"~ `no need to install this perl module anymore`
 ```
 apt-get install linux-headers-$(uname -r)
 git clone https://github.com/f0rb1dd3n/Reptile.git
@@ -67,7 +66,6 @@ Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) fo
 
 If you wanna more information, send me an e-mail: f0rb1dd3n@tuta.io
 
-<br>
 <p align="center">
    <img src="http://2.bp.blogspot.com/-OMozG1JNxic/VQxKMfiU2EI/AAAAAAAAOQM/_suBsIa9O7c/s1600/Reptile%2B6.gif">
 </p>

