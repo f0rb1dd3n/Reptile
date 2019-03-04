@@ -1,14 +1,10 @@
-#include "engine.h"
+#include "internal.h"
 
-extern khook_t __khook_tbl[];
-extern khook_t __khook_tbl_end[];
-
-#define khook_foreach(p)		\
-	for (p = __khook_tbl; p < __khook_tbl_end; p++)
+static khook_stub_t *khook_stub_tbl = NULL;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ksym_lookup_cb(unsigned long data[], const char *name, void *module, unsigned long addr)
+static int khook_lookup_cb(long data[], const char *name, void *module, long addr)
 {
 	int i = 0; while (!module && (((const char *)data[0]))[i] == name[i]) {
 		if (!name[i++]) return !!(data[1] = addr);
@@ -17,160 +13,127 @@ static int ksym_lookup_cb(unsigned long data[], const char *name, void *module, 
 
 static void *khook_lookup_name(const char *name)
 {
-	unsigned long data[2] = { (unsigned long)name, 0 };
-	kallsyms_on_each_symbol((void *)ksym_lookup_cb, data);
-	pr_debug("symbol(%s) = %p\n", name, (void *)data[1]);
+	long data[2] = { (long)name, 0 };
+	kallsyms_on_each_symbol((void *)khook_lookup_cb, data);
 	return (void *)data[1];
 }
 
 static void *khook_map_writable(void *addr, size_t len)
 {
-	int i;
-	void *vaddr = NULL;
-	void *paddr = (void *)((unsigned long)addr & PAGE_MASK);
-	struct page *pages[ DIV_ROUND_UP(offset_in_page(addr) + len, PAGE_SIZE) ];
+	struct page *pages[2] = { 0 }; // len << PAGE_SIZE
+	long page_offset = offset_in_page(addr);
+	int i, nb_pages = DIV_ROUND_UP(page_offset + len, PAGE_SIZE);
 
-	for (i = 0; i < ARRAY_SIZE(pages); i++, paddr += PAGE_SIZE) {
-		if ((pages[i] = __module_address((unsigned long)paddr) ?
-		     vmalloc_to_page(paddr) : virt_to_page(paddr)) == NULL)
+	addr = (void *)((long)addr & PAGE_MASK);
+	for (i = 0; i < nb_pages; i++, addr += PAGE_SIZE) {
+		if ((pages[i] = is_vmalloc_addr(addr) ?
+		     vmalloc_to_page(addr) : virt_to_page(addr)) == NULL)
 			return NULL;
 	}
 
-	vaddr = vmap(pages, ARRAY_SIZE(pages), VM_MAP, PAGE_KERNEL);
-	return vaddr ? vaddr + offset_in_page(addr) : NULL;
+	addr = vmap(pages, nb_pages, VM_MAP, PAGE_KERNEL);
+	return addr ? addr + page_offset : NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Using of in-kernel length disassembler (x86 only, 2.6.33+)
+
+#ifdef CONFIG_X86
+# include "x86/hook.c"
+#else
+# error Target CPU architecture is NOT supported !!!
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <asm/insn.h>
-
-static struct {
-	typeof(insn_init) *init;
-	typeof(insn_get_length) *get_length;
-} insn_api;
-
-static inline void x86_put_jmp(void *a, void *f, void *t)
-{
-	*((char *)(a + 0)) = 0xE9; /* JMP opcode -- E9.xx.xx.xx.xx */
-	*(( int *)(a + 1)) = (long)(t - (f + 5));
-}
-
-static void __khook_init(khook_t *s)
-{
-	int x86_64 = 0;
-
-#ifdef CONFIG_X86_64
-	x86_64 = 1;
-#endif
-
-	if (s->target[0] == 0xE9 || s->target[0] == 0xCC)
-		return;
-
-	while (s->length < 5) {
-		struct insn insn;
-#ifdef RHEL_RELEASE_CODE
-	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 0)
-		insn_api.init(&insn, s->target + s->length, MAX_INSN_SIZE, x86_64);
-	#else
-		insn_api.init(&insn, s->target + s->length, x86_64);
-	#endif
-#else 
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-		insn_api.init(&insn, s->target + s->length, MAX_INSN_SIZE, x86_64);
-	#else
-		insn_api.init(&insn, s->target + s->length, x86_64);
-	#endif
-#endif
-		insn_api.get_length(&insn);
-		s->length += insn.length;
-	}
-
-	memcpy(s->origin_map, s->target, s->length);
-	x86_put_jmp(s->origin_map + s->length, s->origin + s->length, s->target + s->length);
-
-	atomic_inc(&s->usage); /* usage -> 1 */
-}
-
-static int __khook_init_hooks(void *arg)
-{
-	khook_t *s;
-
-	khook_foreach(s) {
-		if (atomic_read(&s->usage) != 1) {
-			pr_debug("failed to hook symbol \"%s\"\n", s->name);
-			continue;
-		}
-		x86_put_jmp(s->target_map, s->target, s->handlr);
-	}
-
-	return 0;
-}
-
-int khook_init(void)
-{
-	khook_t *s;
-
-	insn_api.init = khook_lookup_name("insn_init");
-	if (!insn_api.init) return -EINVAL;
-	insn_api.get_length = khook_lookup_name("insn_get_length");
-	if (!insn_api.get_length) return -EINVAL;
-
-	khook_foreach(s) {
-		s->target = khook_lookup_name(s->name);
-		if (!s->target) continue;
-
-		s->target_map = khook_map_writable(s->target, 32);
-		s->origin_map = khook_map_writable(s->origin, 32);
-		if (!s->target_map || !s->origin_map) continue;
-
-		__khook_init(s);
-	}
-
-	stop_machine(__khook_init_hooks, NULL, NULL); /* apply patches */
-
-	return 0;
-}
-
-static int __khook_cleanup_hooks(void *wakeup)
-{
-	khook_t *s;
-
-	khook_foreach(s) {
-		if (atomic_read(&s->usage) == 0) continue;
-		memcpy(s->target_map, s->origin, s->length);
-	}
-
-	return 0;
-}
-
-static int __khook_try_to_wakeup(void *arg)
+static int khook_sm_wakeup(void *arg)
 {
 	struct task_struct *p;
-
 	for_each_process(p) {
 		wake_up_process(p);
 	}
+	return 0;
+}
+
+static int khook_sm_init_hooks(void *arg)
+{
+	khook_t *p;
+	KHOOK_FOREACH_HOOK(p) {
+		if (!p->target.addr_map) continue;
+		khook_arch_sm_init_one(p);
+	}
+	return 0;
+}
+
+static int khook_sm_cleanup_hooks(void *arg)
+{
+	khook_t *p;
+	KHOOK_FOREACH_HOOK(p) {
+		if (!p->target.addr_map) continue;
+		khook_arch_sm_cleanup_one(p);
+	}
+	return 0;
+}
+
+static void khook_resolve(void)
+{
+	khook_t *p;
+	KHOOK_FOREACH_HOOK(p) {
+		p->target.addr = khook_lookup_name(p->target.name);
+	}
+}
+
+static void khook_map(void)
+{
+	khook_t *p;
+	KHOOK_FOREACH_HOOK(p) {
+		if (!p->target.addr) continue;
+		p->target.addr_map = khook_map_writable(p->target.addr, 32);
+		khook_debug("target %s@%p -> %p\n", p->target.name, p->target.addr, p->target.addr_map);
+	}
+}
+
+static void khook_unmap(int wait)
+{
+	khook_t *p;
+	KHOOK_FOREACH_HOOK(p) {
+		khook_stub_t *stub = KHOOK_STUB(p);
+		if (!p->target.addr_map) continue;
+		while (wait && atomic_read(&stub->use_count) > 0) {
+			msleep_interruptible(1000);
+			stop_machine(khook_sm_wakeup, NULL, NULL);
+			khook_debug("waiting for %s...\n", p->target.name);
+		}
+		vunmap((void *)((long)p->target.addr_map & PAGE_MASK));
+		p->target.addr_map = NULL;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int khook_init(void)
+{
+	void *(*malloc)(long size) = NULL;
+
+	malloc = khook_lookup_name("module_alloc");
+	if (!malloc || KHOOK_ARCH_INIT()) return -EINVAL;
+
+	khook_stub_tbl = malloc(KHOOK_STUB_TBL_SIZE);
+	if (!khook_stub_tbl) return -ENOMEM;
+	memset(khook_stub_tbl, 0, KHOOK_STUB_TBL_SIZE);
+
+	khook_resolve();
+
+	khook_map();
+	stop_machine(khook_sm_init_hooks, NULL, NULL);
+	khook_unmap(0);
 
 	return 0;
 }
 
 void khook_cleanup(void)
 {
-	khook_t *s;
-
-	stop_machine(__khook_cleanup_hooks, NULL, NULL); /* restore patches */
-
-	khook_foreach(s) {
-		while (atomic_read(&s->usage) > 1) {
-			msleep_interruptible(1000);
-			stop_machine(__khook_try_to_wakeup, NULL, NULL);
-		}
-
-		if (s->target_map)
-			vunmap((void *)((unsigned long)s->target_map & PAGE_MASK));
-		if (s->origin_map)
-			vunmap((void *)((unsigned long)s->origin_map & PAGE_MASK));
-	}
+	khook_map();
+	stop_machine(khook_sm_cleanup_hooks, NULL, NULL);
+	khook_unmap(1);
+	vfree(khook_stub_tbl);
 }

@@ -1,8 +1,8 @@
 SECTIONS
 {
 	.data : {
-		__khook_tbl = . ;
+		KHOOK_tbl = . ;
 		*(.data.khook)
-		__khook_tbl_end = . ;
+		KHOOK_tbl_end = . ;
 	}
 }

