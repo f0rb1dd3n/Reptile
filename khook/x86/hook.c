@@ -66,7 +66,11 @@ static inline void khook_arch_sm_init_one(khook_t *hook) {
 
 	memcpy(stub->orig, hook->target.addr, stub->nbytes);
 	x86_put_jmp(stub->orig + stub->nbytes, stub->orig + stub->nbytes, hook->target.addr + stub->nbytes);
-	x86_put_jmp(hook->target.addr_map, hook->target.addr, stub->hook);
+	if (hook->flags & KHOOK_F_NOREF) {
+		x86_put_jmp(hook->target.addr_map, hook->target.addr, hook->fn);
+	} else {
+		x86_put_jmp(hook->target.addr_map, hook->target.addr, stub->hook);
+	}
 	hook->orig = stub->orig; // the only link from hook to stub
 }
 

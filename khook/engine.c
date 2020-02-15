@@ -45,13 +45,14 @@ static void *khook_map_writable(void *addr, size_t len)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int khook_sm_wakeup(void *arg)
+static void khook_wakeup(void)
 {
 	struct task_struct *p;
+	rcu_read_lock();
 	for_each_process(p) {
 		wake_up_process(p);
 	}
-	return 0;
+	rcu_read_unlock();
 }
 
 static int khook_sm_init_hooks(void *arg)
@@ -99,8 +100,8 @@ static void khook_unmap(int wait)
 		khook_stub_t *stub = KHOOK_STUB(p);
 		if (!p->target.addr_map) continue;
 		while (wait && atomic_read(&stub->use_count) > 0) {
+			khook_wakeup();
 			msleep_interruptible(1000);
-			stop_machine(khook_sm_wakeup, NULL, NULL);
 			khook_debug("waiting for %s...\n", p->target.name);
 		}
 		vunmap((void *)((long)p->target.addr_map & PAGE_MASK));
@@ -113,6 +114,7 @@ static void khook_unmap(int wait)
 int khook_init(void)
 {
 	void *(*malloc)(long size) = NULL;
+	int   (*set_memory_x)(unsigned long, int) = NULL;
 
 	malloc = khook_lookup_name("module_alloc");
 	if (!malloc || KHOOK_ARCH_INIT()) return -EINVAL;
@@ -120,6 +122,18 @@ int khook_init(void)
 	khook_stub_tbl = malloc(KHOOK_STUB_TBL_SIZE);
 	if (!khook_stub_tbl) return -ENOMEM;
 	memset(khook_stub_tbl, 0, KHOOK_STUB_TBL_SIZE);
+
+	//
+	// Since some point memory allocated by module_alloc() doesn't
+	// have eXecutable attributes. That's why we have to mark the
+	// region executable explicitly.
+	//
+
+	set_memory_x = khook_lookup_name("set_memory_x");
+	if (set_memory_x) {
+		int numpages = round_up(KHOOK_STUB_TBL_SIZE, PAGE_SIZE) / PAGE_SIZE;
+		set_memory_x((unsigned long)khook_stub_tbl, numpages);
+	}
 
 	khook_resolve();
 

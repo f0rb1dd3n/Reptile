@@ -16,6 +16,8 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "config.h"
 #include "pel.h"
@@ -661,14 +663,17 @@ void reptile_loop(int sock)
 	int status;
 
 	do {
-		fprintf(stdout, "\e[01;32mreptile> \e[00m");
-		line = read_line();
+		line = readline("\e[01;32mreptile> \e[00m");
+		add_history(line);
+
 		args = parse(line);
 		status = execute(sock, args);
 
 		free(line);
 		free(args);
 	} while (status);
+
+	clear_history();
 }
 
 void handle_shutdown(int signal)

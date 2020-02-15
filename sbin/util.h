@@ -3,9 +3,9 @@
 
 //#include "config.h"
 
-#define ID 12345
-#define SEQ 28782
-#define WIN 8192
+#define ID 3429
+#define SEQ 15123
+#define WIN 9965
 #define ERROR -1
 #define RL_BUFSIZE 2048
 #define TOK_BUFSIZE 64

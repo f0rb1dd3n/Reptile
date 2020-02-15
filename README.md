@@ -8,10 +8,12 @@
 ## Tested on
 
 **Debian 9**: 4.9.0-8-amd64<br>
+**Debian 10**: 4.19.0-8-amd64<br>
 **Ubuntu 18.04.1 LTS**: 4.15.0-38-generic<br>
 **Kali Linux**: 4.18.0-kali2-amd64<br>
+**Centos 6.10**: 2.6.32-754.6.3.el6.x86_64<br>
 **Centos 7**: 3.10.0-862.3.2.el7.x86_64<br>
-**Centos 6.10**: 2.6.32-754.6.3.el6.x86_64
+**Centos 8**: 4.18.0-147.5.1.el8_1.x86_64
 
 ## Features
 

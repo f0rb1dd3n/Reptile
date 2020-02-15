@@ -19,6 +19,8 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "config.h"
 #include "util.h"
@@ -540,14 +542,17 @@ void client_loop()
 	int status;
 
 	do {
-		fprintf(stdout, "\e[00;31mreptile-client> \e[00m");
-		line = read_line();
+		line = readline("\e[00;31mreptile-client> \e[00m");
+		add_history(line);
+
 		args = parse(line);
 		status = execute(args);
 
 		free(line);
 		free(args);
 	} while (status);
+
+	clear_history();
 }
 
 int main()

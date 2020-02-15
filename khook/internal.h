@@ -31,7 +31,7 @@ typedef struct {
 		unsigned char orig[0];
 	};
 	union {
-		unsigned char _0x30_[ 0x40 ];
+		unsigned char _0x30_[ 0x80 ];
 		unsigned char hook[0];
 	};
 #pragma pack(pop)

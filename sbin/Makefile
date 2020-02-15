@@ -4,7 +4,7 @@ SERVER_OBJ=pel.c aes.c sha1.c #reverse.c
 #all: listener reverse packet cmd
 
 listener:
-	gcc -O -W -Wall -o listener $(CLIENT_OBJ)
+	gcc -O -W -Wall -o listener $(CLIENT_OBJ) -lreadline
 	strip listener
 	cp listener ../bin
 
@@ -29,7 +29,7 @@ cmd:
 	cp cmd ../bin
 
 client:
-	gcc -O -W -Wall -o client client.c
+	gcc -O -W -Wall -o client client.c -lreadline
 	strip client
 	cp client ../bin
 

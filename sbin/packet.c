@@ -19,48 +19,70 @@
 
 #include "util.h"
 
+struct pseudohdr
+{
+	uint32_t saddr;
+	uint32_t daddr;
+	uint8_t zero;
+	uint8_t protocol;
+	uint16_t length;
+};
+
 unsigned short csum(unsigned short *buf, int nwords)
 {
 	unsigned long sum;
-	for (sum = 0; nwords > 0; nwords--)
+	unsigned short odd;
+
+	for (sum = 0; nwords > 1; nwords-=2)
 		sum += *buf++;
+
+	if (nwords == 1) {
+		odd = 0;
+		*((unsigned char *)&odd) = *(unsigned char *)buf;
+		sum += odd;
+	}
+
 	sum = (sum >> 16) + (sum & 0xffff);
 	sum += (sum >> 16);
+
 	return ~sum;
 }
 
-void tcp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport,
-	 char *data, unsigned int data_len)
+int tcp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport, char *data, unsigned int data_len)
 {
-	int socktcp;
-	unsigned int nbytes, pckt_tam;
+	int socktcp, nbytes, ret = EXIT_FAILURE;
+	unsigned int pckt_tam, plen;
 	char *buffer;
 	struct iphdr *iph;
 	struct tcphdr *tcph;
 	struct sockaddr_in s;
 	socklen_t optval = 1;
+	struct pseudohdr psh;
+	char *pseudo_packet;
 
 	pckt_tam = sizeof(struct iphdr) + sizeof(struct tcphdr) + data_len;
 
-	// printf("tamanho tcp: %d\n", pckt_tam);
-
-	if (!(buffer = (char *)malloc(pckt_tam)))
+	if (!(buffer = (char *)malloc(pckt_tam))) {
 		fatal("on allocating buffer memory");
+		return ret;
+	}
 
 	memset(buffer, '\0', pckt_tam);
 
 	iph = (struct iphdr *)buffer;
 	tcph = (struct tcphdr *)(buffer + sizeof(struct iphdr));
 
-	if ((socktcp = socket(PF_INET, SOCK_RAW, IPPROTO_TCP)) == -1)
+	if ((socktcp = socket(PF_INET, SOCK_RAW, IPPROTO_TCP)) == -1) {
 		fatal("on creating TCP socket");
+		goto free_buffer;
+	}
 
-	if (setsockopt(socktcp, IPPROTO_IP, IP_HDRINCL, &optval,
-		       sizeof(optval)) == -1)
+	if (setsockopt(socktcp, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(optval)) == -1) {
 		fatal("on setsockopt");
+		goto close_socket;
+	}
 
-	memcpy((buffer + sizeof(struct iphdr) + sizeof(struct tcphdr)), data,
-	       data_len);
+	memcpy((buffer + sizeof(struct iphdr) + sizeof(struct tcphdr)), data, data_len);
 
 	iph->ihl = 5;
 	iph->version = 4;
@@ -72,10 +94,12 @@ void tcp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport,
 	iph->saddr = inet_addr(srcip);
 	iph->daddr = inet_addr(dstip);
 
+	//iph->check = csum((unsigned short *)buffer, sizeof(struct iphdr) + sizeof(struct tcphdr));
+	iph->check = csum((unsigned short *)buffer, iph->tot_len);
+
 	tcph->source = htons(srcport);
 	tcph->dest = htons(dstport);
-
-	tcph->seq = htons(SEQ);
+	tcph->seq = 0x0;
 	tcph->ack_seq = 0;
 	tcph->doff = 5;
 	tcph->fin = 0;
@@ -86,29 +110,53 @@ void tcp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport,
 	tcph->urg = 0;
 	tcph->window = htons(WIN);
 	tcph->urg_ptr = 0;
+	tcph->check = 0;
 
-	tcph->check =
-	    csum((unsigned short *)tcph, sizeof(struct tcphdr) + data_len);
-	iph->check = csum((unsigned short *)iph, sizeof(struct iphdr));
+	psh.saddr = inet_addr(srcip);
+	psh.daddr = inet_addr(dstip);
+	psh.zero = 0;
+	psh.protocol = IPPROTO_TCP;
+	psh.length = htons(sizeof(struct tcphdr) + data_len);
+
+	plen = sizeof(struct pseudohdr) + sizeof(struct tcphdr) + data_len;
+
+	if ((pseudo_packet = malloc(plen)) == NULL) {
+		fatal("on malloc");
+		goto close_socket;
+	}
+
+	bzero(pseudo_packet, plen);
+	memcpy(pseudo_packet, &psh, sizeof(struct pseudohdr));
+
+	tcph->seq = htons(SEQ);
+	tcph->check = 0;
+	memcpy(pseudo_packet + sizeof(struct pseudohdr), tcph, sizeof(struct tcphdr) + data_len);
+	tcph->check = csum((unsigned short *)pseudo_packet, plen);
 
 	s.sin_family = AF_INET;
 	s.sin_port = htons(dstport);
 	s.sin_addr.s_addr = inet_addr(dstip);
 
-	if ((nbytes = sendto(socktcp, buffer, iph->tot_len, 0,
-			     (struct sockaddr *)&s, sizeof(struct sockaddr))) ==
-	    0)
+	if ((nbytes = sendto(socktcp, buffer, iph->tot_len, 0, (struct sockaddr *)&s, sizeof(struct sockaddr))) == -1)
 		fatal("on sending package");
 
-	fprintf(stdout, "%s TCP: %u bytes was sent!\n", good, nbytes);
-	free(buffer);
+	if (nbytes > 0) {
+		fprintf(stdout, "%s TCP: %u bytes was sent!\n", good, nbytes);
+		ret = EXIT_SUCCESS;
+	}
+	
+	free(pseudo_packet);
+close_socket:
 	close(socktcp);
+free_buffer:
+	free(buffer);
+	return ret;
 }
 
-void icmp(char *srcip, char *dstip, char *data, unsigned int data_len)
+int icmp(char *srcip, char *dstip, char *data, unsigned int data_len)
 {
-	int sockicmp;
-	unsigned int nbytes, pckt_tam;
+	int sockicmp, nbytes, ret = EXIT_FAILURE;
+	unsigned int pckt_tam;
 	char *buffer;
 	struct iphdr *iph;
 	struct icmphdr *icmp;
@@ -117,25 +165,27 @@ void icmp(char *srcip, char *dstip, char *data, unsigned int data_len)
 
 	pckt_tam = (sizeof(struct iphdr) + sizeof(struct icmphdr) + data_len);
 
-	// printf("tamanho icmp: %d\n", pckt_tam);
-
-	if (!(buffer = (char *)malloc(pckt_tam)))
+	if (!(buffer = (char *)malloc(pckt_tam))) {
 		fatal("on allocating buffer memory");
+		return ret;
+	}
 
 	memset(buffer, '\0', pckt_tam);
 
 	iph = (struct iphdr *)buffer;
 	icmp = (struct icmphdr *)(buffer + sizeof(struct iphdr));
 
-	if ((sockicmp = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1)
+	if ((sockicmp = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1) {
 		fatal("in creating raw ICMP socket");
+		goto free_buffer;
+	}
 
-	if (setsockopt(sockicmp, IPPROTO_IP, IP_HDRINCL, &optval,
-		       sizeof(optval)) == -1)
+	if (setsockopt(sockicmp, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(optval)) == -1) {
 		fatal("in setsockopt");
+		goto close_socket;
+	}
 
-	memcpy((buffer + sizeof(struct iphdr) + sizeof(struct icmphdr)), data,
-	       data_len);
+	memcpy((buffer + sizeof(struct iphdr) + sizeof(struct icmphdr)), data, data_len);
 
 	iph->ihl = 5;
 	iph->version = 4;
@@ -146,62 +196,69 @@ void icmp(char *srcip, char *dstip, char *data, unsigned int data_len)
 	iph->saddr = inet_addr(srcip);
 	iph->daddr = inet_addr(dstip);
 	iph->tot_len = pckt_tam;
+	iph->check = csum((unsigned short *)buffer, iph->tot_len);
 
 	icmp->type = 8;
 	icmp->code = ICMP_ECHO;
+	icmp->checksum = 0;
 	icmp->un.echo.id = htons(WIN);
 	icmp->un.echo.sequence = htons(SEQ);
 
-	icmp->checksum =
-	    csum((unsigned short *)icmp, sizeof(struct icmphdr) + data_len);
-
-	iph->check = csum((unsigned short *)iph, sizeof(struct iphdr));
+	icmp->checksum = csum((unsigned short *)icmp, sizeof(struct icmphdr) + data_len);
 
 	s.sin_family = AF_INET;
 	s.sin_addr.s_addr = inet_addr(dstip);
 
-	if ((nbytes = sendto(sockicmp, buffer, iph->tot_len, 0,
-			     (struct sockaddr *)&s, sizeof(struct sockaddr))) ==
-	    0)
+	if ((nbytes = sendto(sockicmp, buffer, iph->tot_len, 0, (struct sockaddr *)&s, sizeof(struct sockaddr))) == -1)
 		fatal("on sending package");
 
-	fprintf(stdout, "%s ICMP: %u bytes was sent!\n", good, nbytes);
-	free(buffer);
+	if (nbytes > 0) {
+		fprintf(stdout, "%s ICMP: %u bytes was sent!\n", good, nbytes);
+		ret = EXIT_SUCCESS;
+	}
+	
+close_socket:
 	close(sockicmp);
+free_buffer:
+	free(buffer);
+	return ret;
 }
 
-void udp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport,
-	 char *data, unsigned int data_len)
+int udp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport, char *data, unsigned int data_len)
 {
-	int sockudp;
-	unsigned int nbytes, pckt_tam;
+	int sockudp, nbytes, ret = EXIT_FAILURE;
+	unsigned int pckt_tam, plen;
 	char *buffer;
 	struct iphdr *iph;
 	struct udphdr *udph;
 	struct sockaddr_in s;
 	socklen_t optval = 1;
+	struct pseudohdr psh;
+	char *pseudo_packet;
 
 	pckt_tam = sizeof(struct iphdr) + sizeof(struct udphdr) + data_len;
 
-	// printf("tamanho udp: %d\n", pckt_tam);
-
-	if (!(buffer = (char *)malloc(pckt_tam)))
+	if (!(buffer = (char *)malloc(pckt_tam))) {
 		fatal("on allocating buffer memory");
+		return ret;
+	}
 
 	memset(buffer, '\0', pckt_tam);
 
 	iph = (struct iphdr *)buffer;
 	udph = (struct udphdr *)(buffer + sizeof(struct iphdr));
 
-	if ((sockudp = socket(PF_INET, SOCK_RAW, IPPROTO_UDP)) == -1)
+	if ((sockudp = socket(PF_INET, SOCK_RAW, IPPROTO_UDP)) == -1) {
 		fatal("on creating UDP socket");
+		goto free_buffer;
+	}
 
-	if (setsockopt(sockudp, IPPROTO_IP, IP_HDRINCL, &optval,
-		       sizeof(optval)) == -1)
+	if (setsockopt(sockudp, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(optval)) == -1) {
 		fatal("on setsockopt");
+		goto close_socket;
+	}
 
-	memcpy((buffer + sizeof(struct iphdr) + sizeof(struct udphdr)), data,
-	       data_len);
+	memcpy((buffer + sizeof(struct iphdr) + sizeof(struct udphdr)), data, data_len);
 
 	iph->ihl = 5;
 	iph->version = 4;
@@ -212,27 +269,53 @@ void udp(char *srcip, char *dstip, unsigned int srcport, unsigned int dstport,
 	iph->tot_len = pckt_tam;
 	iph->saddr = inet_addr(srcip);
 	iph->daddr = inet_addr(dstip);
+	iph->check = csum((unsigned short *)buffer, iph->tot_len);
 
 	udph->source = htons(srcport);
 	udph->dest = htons(dstport);
 	udph->len = htons(sizeof(struct udphdr) + data_len);
+	udph->check = 0;
+	
+	psh.saddr = inet_addr(srcip);
+	psh.daddr = inet_addr(dstip);
+	psh.zero = 0;
+	psh.protocol = IPPROTO_UDP;
+	psh.length = htons(sizeof(struct udphdr) + data_len);
 
-	udph->check =
-	    csum((unsigned short *)udph, sizeof(struct udphdr) + data_len);
-	iph->check = csum((unsigned short *)iph, sizeof(struct iphdr));
+	plen = sizeof(struct pseudohdr) + sizeof(struct udphdr) + data_len;
+
+	if ((pseudo_packet = malloc(plen)) == NULL) {
+		fatal("on malloc");
+		goto close_socket;
+	}
+
+	bzero(pseudo_packet, plen);
+	memcpy(pseudo_packet, &psh, sizeof(struct pseudohdr));
+
+	udph->check = 0;
+	memcpy(pseudo_packet + sizeof(struct pseudohdr), udph, sizeof(struct udphdr) + data_len);
+	udph->check = csum((unsigned short *)pseudo_packet, plen);
+
+	//fprintf(stdout, "UDP Checksum = 0x%x\n", htons(udph->check));
 
 	s.sin_family = AF_INET;
 	s.sin_port = htons(dstport);
 	s.sin_addr.s_addr = inet_addr(dstip);
 
-	if ((nbytes = sendto(sockudp, buffer, iph->tot_len, 0,
-			     (struct sockaddr *)&s, sizeof(struct sockaddr))) ==
-	    0)
+	if ((nbytes = sendto(sockudp, buffer, iph->tot_len, 0, (struct sockaddr *)&s, sizeof(struct sockaddr))) == -1)
 		fatal("on sending package");
+	
+	if (nbytes > 0) {
+		fprintf(stdout, "%s UDP: %u bytes was sent!\n", good, nbytes);
+		ret = EXIT_SUCCESS;
+	}
 
-	fprintf(stdout, "%s UDP: %u bytes was sent!\n", good, nbytes);
-	free(buffer);
+	free(pseudo_packet);
+close_socket:
 	close(sockudp);
+free_buffer:
+	free(buffer);
+	return ret;
 }
 
 void usage(char *argv0)

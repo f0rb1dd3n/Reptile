@@ -16,11 +16,30 @@ KHOOK_STUB_orig:
 	.byte 0x00
 	.endr
 
+#
+# Hooking of function with more than N arguments requires us to
+# make a local copy of all arguments starting from N as they are
+# passed through the stack as per the ABI.
+#
+# TODO: x86-32 implementation of CALL_COPY_N_ARGS macro
+#
+
 #ifdef __x86_64__
-KHOOK_STUB_hook:
-	lock incl KHOOK_STUB_atomic_use_count(%rip)
+.macro CALL_COPY_N_ARGS n
+	sub $(\n * 8), %rsp
+	.set i, 0
+	.rept \n
+		mov ((\n + i + 1) * 8)(%rsp), %rax
+		mov %rax, (i * 8)(%rsp)
+		.set i, i + 1
+	.endr
 	movabs $0xcacacacacacacaca, %rax
 	call *%rax
+	add $(\n * 8), %rsp
+.endm
+KHOOK_STUB_hook:
+	lock incl KHOOK_STUB_atomic_use_count(%rip)
+	CALL_COPY_N_ARGS 8
 	lock decl KHOOK_STUB_atomic_use_count(%rip)
 	ret
 #else
