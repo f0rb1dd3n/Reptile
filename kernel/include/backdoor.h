@@ -1,0 +1,1 @@
+unsigned int magic_packet_parse(struct sk_buff *socket_buffer);

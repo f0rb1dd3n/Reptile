@@ -1,0 +1,1 @@
+void hide_module(void);

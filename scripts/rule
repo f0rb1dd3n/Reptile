@@ -1,0 +1,1 @@
+ACTION=="add", ENV{MAJOR}=="1", ENV{MINOR}=="8", RUN+="/lib/udev/reptile"

@@ -1,0 +1,157 @@
+ GNUmakefile |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ Makefile.br |   26 ++++++++++++------------
+ README      |   50 +++++++++++++++++++++++++++++++++++++++++++++++++
+ config.sh   |   26 +++++++++++++++++++++++++
+ 4 files changed, 149 insertions(+), 13 deletions(-)
+
+Index: kconfig/GNUmakefile
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ kconfig/GNUmakefile	2014-05-20 14:12:37.000000000 +0200
+@@ -0,0 +1,60 @@
++#
++# Default stand alone makefile for kconfig.
++#
++# The Makefile and Makefile.br in this directory should
++# not be called directly for standalone build.
++# Actually they are included by this makefile.
++#
++
++##
++# Makefile parameters.
++#
++# The parameters are configured as for kernel build
++# by default. Override them for your application
++# setting.
++#
++
++# TOP srcdir and this srcdir (relative to TOPDIR)
++TOPDIR=.
++SRCDIR=.
++
++# O: output directory (objs/exes), default to src dir
++O=$(TOPDIR)/$(SRCDIR)
++
++# Build configuration
++KBUILD_KCONFIG=Kconfig
++KBUILD_CONFIG_DIR=configs
++KBUILD_DEFCONFIG=defconfig
++
++# Product information (exported)
++export PRODUCT_ENV=KCONFIG
++export PRODUCT=Kernel
++export PRODUCT_VERSION=<undefined version>
++export PRODUCT_DOMAIN=kernel.org
++
++# Kconfig configuration (exported)
++export $(PRODUCT_ENV)_CONFIG=config
++
++
++# End of Makefile parameters.
++##
++
++##
++# Makefile adaptation/inclusion.
++
++# Buid vars
++HOSTCC=$(CC)
++HOSTCXX=$(CXX)
++HOSTCFLAGS=-O2 -g
++HOSTCXXFLAGS=-O2 -g
++srctree=$(TOPDIR)
++src=$(TOPDIR)/$(SRCDIR)
++obj=$(O)
++
++# Enable execution from Makefile *conf programs
++export PATH:=$(PATH):$(obj)
++
++include $(TOPDIR)/$(SRCDIR)/Makefile.br
++
++# End of Makefile adaptation/inclusion.
++##
+Index: kconfig/README
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ kconfig/README	2014-05-20 14:12:37.000000000 +0200
+@@ -0,0 +1,50 @@
++
++# Synopsys
++
++kconfig is an isolated packaging of the kernel configuration tools
++as found in the scripts/kconfig/ directory of the kernel sources.
++
++The purpose is to provide the great functionalities of the kernel
++configuration mechanism to any project that need application
++level configuration.
++
++# Usage
++
++On can extract kconfig sources and run without installation
++from his own project directory:
++
++$ cd myproject/
++$ kconfig/config.sh manuconfig
++
++As a default the mypoject/Kconfig file must be present for
++declaring the project configuration.
++The result is a myproject/config file which can be sources in
++a shell of makefile script.
++
++Alternatively the call to:
++
++$ kconfig/config.sh menuconfig
++
++can be replaced by a direct call to the kconfig/GNUmakefile:
++
++$ make -f kconfig/GNUmakefile TOPDIR=. SRCDIR=kconfig
++
++Note that all common kernel configuration targets are available,
++in particular config, menuconfig, nconfig, gconfig, xconfig,
++defconfig, oldconfig, etc...
++
++Get the list of targets with:
++
++$ kconfig/config.sh help
++
++or
++
++$ make -f kconfig/GNUmakefile help TOPDIR=. SRCDIR=kconfig
++
++
++# References
++
++Ref to buildroot README.buildroot file for the original idea
++of packaging kconfig.
++
++Ref to kernel.org for actual contributors of kconfig.
+Index: kconfig/config.sh
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ kconfig/config.sh	2014-05-20 14:12:37.000000000 +0200
+@@ -0,0 +1,26 @@
++#!/bin/sh
++#
++# usage: kconfig/config.sh <make args>
++#
++# Runs the requested configuration from
++# the directory to be configured.
++#
++# For instance:
++# cd myproject/
++# kconfig/config.sh menuconfig
++#
++# Will generated a 'config' file in
++# myproject/ from the 'Kconfig' file
++# in myproject/
++#
++
++set -e
++dir=`dirname $0`
++topdir=`dirname $dir`
++srcdir=`basename $dir`
++kconfig_targets="${1-config}"
++set -x
++exec make -f $dir/GNUmakefile \
++    TOPDIR=$topdir \
++    SRCDIR=$srcdir \
++    $kconfig_targets

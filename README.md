@@ -11,7 +11,6 @@
 **Debian 10**: 4.19.0-8-amd64<br>
 **Ubuntu 18.04.1 LTS**: 4.15.0-38-generic<br>
 **Kali Linux**: 4.18.0-kali2-amd64<br>
-**Kali Linux**: 5.4.0-kali3-amd64<br>
 **Centos 6.10**: 2.6.32-754.6.3.el6.x86_64<br>
 **Centos 7**: 3.10.0-862.3.2.el7.x86_64<br>
 **Centos 8**: 4.18.0-147.5.1.el8_1.x86_64
@@ -33,18 +32,21 @@
    
 ## Install
 ```
-apt-get install linux-headers-$(uname -r)
+apt install build-essential libncurses-dev linux-headers-$(uname -r)
 git clone https://github.com/f0rb1dd3n/Reptile.git
 cd Reptile
-./setup.sh install
+make config # or 'make menuconfig' or even 'make defconfig'
+make
+make install
 ```
+More details about the installation see [Wiki](https://github.com/f0rb1dd3n/Reptile/wiki/Install)
 ## Uninstall
-```
-./setup.sh remove
-```
+
+When you got a sucessfully instalation, the way to remove that will be shown in screen
+
 ## Usage
 
-See [Wiki](https://github.com/f0rb1dd3n/Reptile/wiki/Usage) to usage details.
+See [Wiki](https://github.com/f0rb1dd3n/Reptile/wiki/Usage) to usage details. So, read the fucking manual before opening an issue!
 
 ## Warning
 
@@ -53,12 +55,9 @@ Some functions of this module is based on another rootkits. Please see the refer
 ## References
 
 - “[LKM HACKING](http://www.ouah.org/LKM_HACKING.html)”, The Hackers Choice (THC), 1999;
-- https://github.com/milabs
 - https://github.com/mncoppola/suterusu
-- https://github.com/m0nad/Diamorphine.git
 - https://github.com/David-Reguera-Garcia-Dreg/enyelkm.git
 - https://github.com/creaktive/tsh
-- http://www.drkns.net/kernel-who-does-magic/
 - https://github.com/brenns10/lsh
 
 ## Thanks

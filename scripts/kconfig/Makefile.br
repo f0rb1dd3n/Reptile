@@ -1,0 +1,60 @@
+src ?= .
+top_srcdir ?= ../../
+top_builddir ?= ../../
+srctree ?= .
+obj ?= .
+
+include $(src)/Makefile
+#HOSTCFLAGS+=-Dinline="" -include foo.h
+-include $(obj)/.depend
+$(obj)/.depend: $(wildcard *.h *.c)
+	@$(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) -MM *.c > $@ 2>/dev/null || :
+	@echo "  HOSTCC  $@"
+
+__hostprogs := $(sort $(hostprogs-y) $(hostprogs-m))
+host-csingle := $(addprefix $(obj)/,$(foreach m,$(__hostprogs),$(if $($(m)-objs),,$(m))))
+host-cmulti := $(addprefix $(obj)/,$(foreach m,$(__hostprogs),\
+           $(if $($(m)-cxxobjs),,$(if $($(m)-objs),$(m)))))
+host-cxxmulti := $(addprefix $(obj)/,$(foreach m,$(__hostprogs),\
+           $(if $($(m)-cxxobjs),$(m),$(if $($(m)-objs),))))
+host-cobjs := $(addprefix $(obj)/,$(sort $(foreach m,$(__hostprogs),$($(m)-objs))))
+host-cxxobjs := $(addprefix $(obj)/,$(sort $(foreach m,$(__hostprogs),$($(m)-cxxobjs))))
+
+HOST_EXTRACFLAGS += -I$(obj) -DCONFIG_=\"\"
+
+$(host-csingle): %: %.c
+	@$(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) $(HOSTCFLAGS_$(@F)) $< -o $@
+	@echo "  HOSTCC  $@"
+
+$(host-cmulti): %: $(host-cobjs) $(host-cshlib)
+	@$(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) $(HOSTCFLAGS_$(@F)) $(addprefix $(obj)/,$($(@F)-objs)) $(HOSTLOADLIBES_$(@F)) -o $@
+	@echo "  HOSTLD  $@"
+
+$(host-cxxmulti): %: $(host-cxxobjs) $(host-cobjs) $(host-cshlib)
+	@$(HOSTCXX) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) $(HOSTCXXFLAGS_$(@F)) $(addprefix $(obj)/,$($(@F)-objs) $($(@F)-cxxobjs)) $(HOSTLOADLIBES_$(@F)) -o $@
+	@echo "  HOSTLD  $@"
+
+$(obj)/%.o: %.c
+	@$(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) $(HOSTCFLAGS_$(@F)) -c $< -o $@
+	@echo "  HOSTCC  $@"
+
+$(obj)/%.o: $(obj)/%.c
+	@$(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) $(HOSTCFLAGS_$(@F)) -c $< -o $@
+	@echo "  HOSTCC  $@"
+
+$(obj)/%.o: %.cc
+	@$(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) $(HOSTCXXFLAGS_$(@F)) -c $< -o $@
+	@echo "  HOSTCC  $@"
+
+$(obj)/%:: $(src)/%_shipped
+	@$(Q)cat $< > $@
+
+clean:
+	$(Q)rm -f $(addprefix $(obj)/,$(clean-files))
+distclean: clean
+	$(Q)rm -f $(addprefix $(obj)/,$(lxdialog) $(conf-objs) $(mconf-objs) $(kxgettext-objs) \
+		$(hostprogs-y) $(qconf-cxxobjs) $(qconf-objs) $(gconf-objs) \
+		mconf .depend)
+
+FORCE:
+.PHONY: FORCE clean distclean
