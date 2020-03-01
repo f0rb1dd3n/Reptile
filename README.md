@@ -35,14 +35,14 @@
 apt install build-essential libncurses-dev linux-headers-$(uname -r)
 git clone https://github.com/f0rb1dd3n/Reptile.git
 cd Reptile
-make config # or 'make menuconfig' or even 'make defconfig'
+make menuconfig           # or 'make config' or even 'make defconfig'
 make
 make install
 ```
 More details about the installation see [Wiki](https://github.com/f0rb1dd3n/Reptile/wiki/Install)
 ## Uninstall
 
-When you got a sucessfully instalation, the way to remove that will be shown in screen
+When you got a sucessfully installation, the way to remove that will be shown in the screen
 
 ## Usage
 
