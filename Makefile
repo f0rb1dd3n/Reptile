@@ -1,6 +1,7 @@
 CC := gcc
 RM = rm -rf
 SHELL := /bin/bash
+PWD := $(shell pwd)
 KERNEL := /lib/modules/$(shell uname -r)/build
 CLIENT_DIR ?= $(PWD)/userland
 CONFIG_SCRIPT ?= $(PWD)/scripts/kconfig/config.sh
