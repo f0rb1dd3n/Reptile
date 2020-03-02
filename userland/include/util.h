@@ -33,20 +33,6 @@ void fatal(char *message)
 	exit(ERROR);
 }
 
-void _xor(char *arg, int key, int nbytes)
-{
-	int i;
-	for (i = 0; i < nbytes; i++)
-		arg[i] ^= key;
-}
-
-void _add(char *arg, int key, int nbytes)
-{
-	int i;
-	for (i = 0; i < nbytes; i++)
-		arg[i] += key;
-}
-
 void banner(void)
 {
 	fprintf(stdout, "\e[01;31m\n"
