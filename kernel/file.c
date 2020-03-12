@@ -3,8 +3,6 @@
 
 #include "file.h"
 
-int file_tampering_flag = 1;
-
 int file_check(void *arg, ssize_t size)
 {
     int ret = 0;

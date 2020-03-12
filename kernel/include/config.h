@@ -5,9 +5,8 @@
  * FIXME: randomly generate KEY, IPID, SEQ and WIN. 
  *
  * Note: I know it is not a good practice to have those configurations
- * constants, but since is already known some issues in Reptile, this 
- * will be the least of you problems. Don't worry I got an update to 
- * commit in the next version.
+ * constants, but since there is already known issues in Reptile, this 
+ * will be the least of your problems. It will be updated next version!
  *
  */
 

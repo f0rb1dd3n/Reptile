@@ -757,7 +757,7 @@ void listener(int port)
 
 void usage(char *argv0)
 {
-	fprintf(stderr, "Usage: %s [ -p port ] [ -s secret (optional) ]\n",
+	fprintf(stderr, "Usage: %s [ -p port ] [ -s secret ]\n",
 		argv0);
 	exit(1);
 }
