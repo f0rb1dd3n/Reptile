@@ -163,8 +163,10 @@ int runshell(int client)
 
 	pid = fork();
 
-	if (pid < 0)
+	if (pid < 0) {
+		free(temp);
 		return (ERROR);
+	}
 
 	if (pid == 0) {
 		close(client);
