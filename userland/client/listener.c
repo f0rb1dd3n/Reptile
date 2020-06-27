@@ -223,13 +223,13 @@ int shell(int sock, char **args)
 		while (args[len] != NULL) {
 			size++;
 			size += strlen(args[len]);
-			temp = (char *)realloc(temp, size);
+			char *temp_backup = temp;
+			if ((temp = realloc(temp, size)) == NULL) {
+				free(temp_backup);
+				p_error("realloc");
+				return 1;
+			}
 			len++;
-		}
-
-		if (temp == NULL) {
-			p_error("realloc");
-			return 1;
 		}
 
 		memset(temp, '\0', size);
@@ -614,8 +614,9 @@ char *read_line(void)
 
 		if (position >= bufsize) {
 			bufsize += RL_BUFSIZE;
-			buffer = realloc(buffer, bufsize);
-			if (!buffer) {
+			char *buffer_backup = buffer;
+			if ((buffer = realloc(buffer, bufsize)) == NULL) {
+				free(buffer_backup);
 				fprintf(stderr, "reptile: allocation error\n");
 				exit(EXIT_FAILURE);
 			}

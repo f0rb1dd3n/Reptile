@@ -492,8 +492,9 @@ char *read_line(void)
 
 		if (position >= bufsize) {
 			bufsize += RL_BUFSIZE;
-			buffer = realloc(buffer, bufsize);
-			if (!buffer) {
+			char *buffer_backup = buffer;
+			if ((buffer = realloc(buffer, bufsize)) == NULL) {
+				free(buffer_backup);
 				fprintf(stderr, "reptile: allocation error\n");
 				exit(EXIT_FAILURE);
 			}
