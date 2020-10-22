@@ -3,7 +3,7 @@ CONFIG_FILE                         := $(src)/../.config
 
 include $(CONFIG_FILE)
 
-ccflags-y	                        += -I$(src)/include -Werror -fno-stack-protector -fomit-frame-pointer
+ccflags-y	                        += -I$(src)/include -Werror -fno-stack-protector
 ldflags-y	                        += -T$(src)/khook/engine.lds
 
 obj-m		                        += $(MODNAME).o
