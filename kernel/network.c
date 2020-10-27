@@ -33,6 +33,17 @@ void network_hide_remove(struct sockaddr_in addr)
 	}
 }
 
+void network_hide_cleanup(void)
+{
+	struct hidden_conn *hc;
+
+	list_for_each_entry(hc, &hidden_conn_list, list)
+	{
+		list_del(&hc->list);
+		kfree(hc);
+	}
+}
+
 int is_addr_hidden(struct sockaddr_in addr)
 {
     struct hidden_conn *hc;

