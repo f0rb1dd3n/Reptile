@@ -1,5 +1,27 @@
 # Reptile
 
+## ⚠️ Security Research and Dual-Use Warning
+
+> [!CAUTION]
+> Reptile is a Linux kernel rootkit with capabilities including privilege
+> escalation, persistence, concealment, and remote command execution. These
+> capabilities can compromise a system's security, privacy, integrity, and
+> availability. Installing or running this software may cause system
+> instability, data loss, or unauthorized access.
+
+This source code is provided **solely for legitimate security research,
+education, defensive testing, and analysis in controlled environments**. Use
+it only on systems that you own or for which you have prior, explicit written
+authorization. Do not use Reptile to gain unauthorized access, maintain
+unauthorized persistence, conceal malicious activity, harm systems or users,
+or support any unlawful attack or malware campaign.
+
+Run this software only in an isolated lab or disposable virtual machine, never
+on production systems. You are responsible for complying with all applicable
+laws, regulations, and agreements. The maintainers do not endorse malicious or
+unlawful use and accept no liability for damage or misuse. See the full
+[Disclaimer and Acceptable Use Notice](DISCLAIMER.md) before using this project.
+
 <img align="left" src="https://imgur.com/nqujOlz.png">
 
 <br><br><br><br><br>
@@ -66,7 +88,8 @@ Special thanks to my friend [Ilya V. Matveychikov](https://github.com/milabs) fo
 
 ## Disclaimer
 
-If you wanna more information, send me an e-mail: f0rb1dd3n@tuta.io
+Read the [Disclaimer and Acceptable Use Notice](DISCLAIMER.md). If you want
+more information, send an email to f0rb1dd3n@tuta.io.
 
 <p align="center">
    <img src="http://2.bp.blogspot.com/-OMozG1JNxic/VQxKMfiU2EI/AAAAAAAAOQM/_suBsIa9O7c/s1600/Reptile%2B6.gif">
